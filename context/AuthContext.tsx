@@ -17,6 +17,7 @@ export interface User {
   status: "pending" | "approved" | "rejected";
   level?: string;
   faculty?: string;
+  avatarUrl?: string;
 }
 
 interface AuthContextType {
@@ -24,8 +25,9 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (name: string, email: string, password: string, role: "student" | "landlord") => Promise<{ success: boolean; error?: string }>;
+  signup: (name: string, email: string, password: string, role: "student" | "landlord", phone?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,13 +39,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Fetch profile data from the profiles table
   const fetchProfile = async (userId: string, email: string) => {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", userId)
       .single();
 
-    if (error) {
+    // If profile is missing, create a default one (self-healing)
+    if (error && error.code === "PGRST116") {
+      console.log("Profile missing, creating default...");
+      const { data: newData, error: createError } = await supabase
+        .from("profiles")
+        .insert({
+          id: userId,
+          email: email,
+          name: email.split("@")[0],
+          role: "student",
+          status: "approved"
+        })
+        .select()
+        .single();
+      
+      if (createError) {
+        console.error("Error creating missing profile:", createError);
+        return null;
+      }
+      data = newData;
+    } else if (error) {
       console.error("Error fetching profile:", error);
       return null;
     }
@@ -53,38 +75,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: email,
       name: data.name,
       role: data.role,
-      status: data.status || "approved",
+      status: data.status || "pending",
+      phone: data.phone,
       level: data.level,
       faculty: data.faculty,
+      avatarUrl: data.avatar_url,
     } as User;
   };
 
   useEffect(() => {
+    let mounted = true;
+
     // Check active sessions and sets the user
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        const profile = await fetchProfile(session.user.id, session.user.email!);
-        setUser(profile);
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user && mounted) {
+          const profile = await fetchProfile(session.user.id, session.user.email!);
+          if (mounted) setUser(profile);
+        }
+      } catch (err) {
+        console.error("Auth initialization error:", err);
+      } finally {
+        if (mounted) setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
-    getSession();
+    initializeAuth();
+
+    // Safety timeout: Ensure loading screen disappears even if Supabase hangs
+    const timeout = setTimeout(() => {
+      if (mounted && isLoading) {
+        console.warn("Auth initialization timed out. Forcing isLoading to false.");
+        setIsLoading(false);
+      }
+    }, 5000);
 
     // Listen for changes on auth state (logged in, signed out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user && !isSigningUp) {
+      console.log("Auth event:", event);
+      
+      if (session?.user) {
+        // Only fetch if we don't have the user or the ID changed
         const profile = await fetchProfile(session.user.id, session.user.email!);
-        setUser(profile);
-      } else if (!session?.user) {
-        setUser(null);
+        if (mounted) {
+          setUser(profile);
+          setIsLoading(false);
+        }
+      } else {
+        if (mounted) {
+          setUser(null);
+          setIsLoading(false);
+        }
       }
-      setIsLoading(false);
     });
 
     return () => {
+      mounted = false;
+      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, []);
@@ -110,7 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true };
   };
 
-  const signup = async (name: string, email: string, password: string, role: "student" | "landlord"): Promise<{ success: boolean; error?: string }> => {
+  const signup = async (name: string, email: string, password: string, role: "student" | "landlord", phone?: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     setIsSigningUp(true);
     
@@ -121,6 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: {
           name,
           role,
+          phone,
         },
       },
     });
@@ -142,6 +192,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    window.location.href = "/";
+  };
+
+  const refreshProfile = async () => {
+    if (user) {
+      const profile = await fetchProfile(user.id, user.email);
+      if (profile) setUser(profile);
+    }
   };
 
   return (
@@ -153,6 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         signup,
         logout,
+        refreshProfile,
       }}
     >
       {children}

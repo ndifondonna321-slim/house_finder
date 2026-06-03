@@ -32,6 +32,8 @@ export default function AdminNewListingPage() {
     landlordName: "",
     landlordPhone: "",
     landlordWhatsApp: "",
+    roomNumber: "",
+    floor: "",
   });
 
   const { user } = useAuth();
@@ -77,6 +79,8 @@ export default function AdminNewListingPage() {
         images: images,
         owner_id: user.id,
         status: (user.role === "admin" || user.status === "approved") ? "approved" : "pending",
+        // room_number: form.roomNumber,
+        // floor: form.floor,
       },
     ]);
 
@@ -110,16 +114,27 @@ export default function AdminNewListingPage() {
             <strong>{form.title}</strong> has been added successfully.
             This will be saved to Supabase once auth is connected.
           </p>
-          <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
-            <button
-              className="btn btn-primary"
-              onClick={() => { setSuccess(false); setForm({ title: "", price: "", location: "", roomType: "", distanceFromCampus: "", availability: "available", description: "", landlordName: "", landlordPhone: "", landlordWhatsApp: "" }); setSelectedAmenities([]); }}
-            >
-              ➕ Add Another
-            </button>
-            <button className="btn btn-outline" onClick={() => router.push("/admin/listings")}>
-              📋 View All Listings
-            </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: "1rem" }}>
+              <button
+                className="btn btn-primary"
+                onClick={() => { setSuccess(false); setForm({ title: "", price: "", location: "", roomType: "", distanceFromCampus: "", availability: "available", description: "", landlordName: "", landlordPhone: "", landlordWhatsApp: "", roomNumber: "", floor: "" }); setSelectedAmenities([]); }}
+              >
+                ➕ Add Another
+              </button>
+              <button className="btn btn-outline" onClick={() => router.push("/admin/listings")}>
+                📋 Manage Listings
+              </button>
+            </div>
+            <div className="divider" style={{ width: "100%", margin: "0.5rem 0" }} />
+            <div style={{ display: "flex", gap: "1rem" }}>
+              <button className="btn btn-ghost" onClick={() => router.push("/")}>
+                🏠 Go to Home
+              </button>
+              <button className="btn btn-accent" onClick={() => router.push("/listings")}>
+                🌐 View on Site
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -227,6 +242,29 @@ export default function AdminNewListingPage() {
                 onChange={handleChange}
                 required
               />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <div>
+                <label style={labelStyle}>Room Number</label>
+                <input
+                  name="roomNumber"
+                  className="input"
+                  placeholder="e.g. Room 12"
+                  value={form.roomNumber}
+                  onChange={handleChange}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Floor</label>
+                <input
+                  name="floor"
+                  className="input"
+                  placeholder="e.g. 2nd Floor"
+                  value={form.floor}
+                  onChange={handleChange}
+                />
+              </div>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
@@ -387,9 +425,9 @@ export default function AdminNewListingPage() {
           <button
             type="button"
             className="btn btn-outline"
-            onClick={() => router.push("/admin")}
+            onClick={() => router.push("/listings")}
           >
-            Cancel
+            ← Back to Listings
           </button>
           <button type="submit" className="btn btn-accent" id="submit-listing-btn" disabled={isSubmitting}>
             {isSubmitting ? "Processing..." : "🚀 Publish Listing"}

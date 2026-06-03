@@ -5,7 +5,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 
 // Routes that require authentication
-const PROTECTED_ROUTES = ["/listings", "/saved", "/profile", "/landlord"];
+// Routes that require authentication
+const PROTECTED_ROUTES = ["/listings", "/listing", "/saved", "/profile", "/landlord"];
 
 // Routes that should redirect authenticated users away
 const AUTH_ROUTES = ["/login", "/signup", "/auth"];
@@ -21,9 +22,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const isProtected = PROTECTED_ROUTES.some((route) => pathname?.startsWith(route));
     const isAuthRoute = AUTH_ROUTES.includes(pathname || "");
 
-    // Redirect unauthenticated users to login
+    // Redirect unauthenticated users to login/signup
     if (!isAuthenticated && isProtected) {
-      router.push(`/login?redirect=${encodeURIComponent(pathname || "")}`);
+      const redirectPath = pathname?.startsWith("/listing") ? "/signup" : "/login";
+      router.push(`${redirectPath}?redirect=${encodeURIComponent(pathname || "")}`);
       return;
     }
 
@@ -44,8 +46,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [isLoading, isAuthenticated, pathname, router, user]);
 
-  // Show nothing while loading or redirecting
-  if (isLoading) {
+  const isProtected = PROTECTED_ROUTES.some((route) => pathname?.startsWith(route));
+
+  // ONLY show spinner if we are on a protected route and still loading
+  if (isLoading && isProtected) {
     return (
       <div
         style={{
@@ -53,6 +57,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          background: "var(--bg)",
         }}
       >
         <div
@@ -71,10 +76,9 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   // Don't render protected content while redirecting
-  const isProtected = PROTECTED_ROUTES.some((route) => pathname?.startsWith(route));
-  if (!isAuthenticated && isProtected) {
+  if (!isAuthenticated && isProtected && !isLoading) {
     return null;
   }
 
   return <>{children}</>;
-}
+}

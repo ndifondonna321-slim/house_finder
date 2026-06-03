@@ -4,328 +4,352 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { getFeaturedListings, formatPrice, roomTypeLabels, type Listing } from "@/lib/data";
+import { getFeaturedListings, getWebsiteReviews, submitWebsiteReview, type Listing, type WebsiteReview } from "@/lib/data";
 import ListingCard from "@/components/ListingCard";
+
+/* ──────────────────────────────────────────────────────────────────
+   DATA
+────────────────────────────────────────────────────────────────── */
+const whyItems = [
+  {
+    icon: "🛡️",
+    title: "100% Verified Listings",
+    desc: "Every property is personally reviewed before going live. No fake listings, no scams.",
+  },
+  {
+    icon: "💬",
+    title: "Direct Landlord Contact",
+    desc: "Chat directly with property owners via WhatsApp. No middlemen, no extra charges.",
+  },
+  {
+    icon: "📍",
+    title: "Campus-Focused Search",
+    desc: "Every listing shows exact walking distance from UBa campus, so you always know where you stand.",
+  },
+  {
+    icon: "💰",
+    title: "Transparent Pricing",
+    desc: "What you see is what you pay. Prices are set by landlords with no hidden fees.",
+  },
+  {
+    icon: "🔍",
+    title: "Smart Filters",
+    desc: "Filter by room type, price, distance, and availability to find exactly what you need.",
+  },
+  {
+    icon: "⚡",
+    title: "Free for Students",
+    desc: "Creating an account, browsing listings, and contacting landlords is completely free.",
+  },
+];
 
 const steps = [
   {
+    num: "01",
     icon: "🔍",
-    title: "Search",
-    desc: "Browse verified listings filtered by price, location, and room type — all in one place.",
+    title: "Create a Free Account",
+    desc: "Sign up in seconds with your student email. No credit card, no commitment required.",
   },
   {
+    num: "02",
     icon: "📋",
-    title: "Compare",
-    desc: "View detailed photos, amenities, and distance from campus for every listing.",
+    title: "Browse & Filter Listings",
+    desc: "Use smart filters to narrow down by price, room type, and walking distance from campus.",
   },
   {
+    num: "03",
     icon: "📞",
-    title: "Contact",
-    desc: "Reach the landlord directly via WhatsApp or phone — no middleman, no hidden fees.",
+    title: "Contact the Landlord",
+    desc: "Found the perfect room? Tap to open WhatsApp and speak directly with the property owner.",
   },
 ];
 
 const testimonials = [
   {
     name: "Nkemdirim Grace",
-    dept: "Faculty of Sciences, Level 300",
-    text: "I found my current room in less than an hour on BambiHomes. No stress, no scam — just a clean listing and a direct call to the landlord.",
+    dept: "Faculty of Sciences · Level 300",
+    text: "Found my current room in less than an hour on BambiHomes. No stress, no scam — just a clean listing and a direct call to the landlord.",
     avatar: "N",
+    hue: 220,
   },
   {
     name: "Fon Desmond",
-    dept: "HTTTC, Level 200",
-    text: "As a first-year student I had no idea how to find housing in Bambili. BambiHomes made the whole process easy and transparent.",
+    dept: "HTTTC Bambili · Level 200",
+    text: "As a first-year student I had no idea how to find housing in Bambili. BambiHomes made the whole process easy and totally transparent.",
     avatar: "F",
+    hue: 250,
   },
   {
     name: "Achu Celine",
-    dept: "Faculty of Arts, Level 400",
-    text: "The filters are fantastic. I searched specifically for a self-contain under 25k near campus and found exactly that in minutes.",
+    dept: "Faculty of Arts · Level 400",
+    text: "The filters are fantastic. I searched for a self-contain under 25k near campus and found exactly that in minutes.",
     avatar: "A",
+    hue: 200,
   },
 ];
 
-// CTA button that respects auth state
-function HeroCTA() {
+const stats = [
+  { value: "8+", label: "Active Listings" },
+  { value: "300+", label: "Students Helped" },
+  { value: "100%", label: "Verified" },
+  { value: "Free", label: "Always" },
+];
+
+/* ──────────────────────────────────────────────────────────────────
+   AUTH-AWARE CTA
+────────────────────────────────────────────────────────────────── */
+function CTAButton({
+  label,
+  variant = "primary",
+  size = "lg",
+}: {
+  label: string;
+  variant?: "primary" | "outline";
+  size?: "sm" | "lg";
+}) {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
+  const dest = isAuthenticated ? "/listings" : "/login?redirect=/listings";
+  const pad = size === "lg" ? "1rem 2.25rem" : "0.75rem 1.625rem";
+  const fs = size === "lg" ? "1rem" : "0.9375rem";
 
-  const handleClick = (e: React.MouseEvent) => {
+  return (
+    <button
+      onClick={() => router.push(dest)}
+      className={`btn btn-${variant}`}
+      style={{ padding: pad, fontSize: fs, fontWeight: 700 }}
+    >
+      {label}
+    </button>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   PAGE
+────────────────────────────────────────────────────────────────── */
+export default function HomePage() {
+  const { user } = useAuth();
+  const [featured, setFeatured] = useState<Listing[]>([]);
+  const [reviews, setReviews] = useState<WebsiteReview[]>([]);
+  
+  // Review form state
+  const [rating, setRating] = useState(5);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  const fetchReviews = () => {
+    getWebsiteReviews().then((data) => {
+      setReviews(data);
+    });
+  };
+
+  useEffect(() => {
+    getFeaturedListings().then(setFeatured);
+    fetchReviews();
+  }, []);
+
+  const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isAuthenticated) {
-      router.push("/listings");
+    if (!user) return;
+    if (comment.trim().length < 10) {
+      setSubmitError("Please write a review of at least 10 characters.");
+      return;
+    }
+    setIsSubmitting(true);
+    setSubmitError("");
+    const res = await submitWebsiteReview(user.id, rating, comment);
+    setIsSubmitting(false);
+    if (res.success) {
+      setSubmitSuccess(true);
+      setComment("");
+      setRating(5);
+      fetchReviews();
+      setTimeout(() => setSubmitSuccess(false), 5000);
     } else {
-      router.push("/login?redirect=/listings");
+      setSubmitError(res.error || "Failed to submit review. If you haven't setup the reviews table in Supabase, please run the SQL script.");
     }
   };
 
   return (
-    <Link
-      href={isAuthenticated ? "/listings" : "/login?redirect=/listings"}
-      onClick={handleClick}
-      className="btn btn-primary"
-      id="hero-cta-btn"
-    >
-      🏠 Find a House Now
-    </Link>
-  );
-}
+    <main style={{ fontFamily: "inherit" }}>
 
-export default function HomePage() {
-  const [featured, setFeatured] = useState<Listing[]>([]);
+      {/* ╔══════════════════════════════════════════════════════════╗
+          ║  1. HERO                                                 ║
+          ╚══════════════════════════════════════════════════════════╝ */}
+      <section style={{
+        minHeight: "100vh",
+        marginTop: "-64px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        textAlign: "center",
+        padding: "calc(64px + 7rem) 1.5rem 6rem",
+        position: "relative",
+        overflow: "hidden",
+        backgroundImage: "url('/hero-bg.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center center",
+        backgroundRepeat: "no-repeat",
+      }}>
+        {/* Primary dark overlay for readability */}
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(165deg, rgba(4,8,18,0.84) 0%, rgba(8,15,32,0.72) 50%, rgba(4,8,18,0.88) 100%)", pointerEvents: "none" }} />
+        {/* Subtle dot grid */}
+        <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(255,255,255,0.035) 1px, transparent 1px)", backgroundSize: "32px 32px", pointerEvents: "none" }} />
+        {/* Bottom fade into next section */}
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "200px", background: "linear-gradient(to bottom, transparent, #111827)", pointerEvents: "none" }} />
+        {/* Blue ambient glow top-left */}
+        <div style={{ position: "absolute", top: "10%", left: "5%", width: "480px", height: "480px", background: "radial-gradient(circle, rgba(59,130,246,0.10) 0%, transparent 65%)", borderRadius: "50%", pointerEvents: "none" }} />
+        {/* Amber glow bottom-right */}
+        <div style={{ position: "absolute", bottom: "8%", right: "5%", width: "400px", height: "400px", background: "radial-gradient(circle, rgba(245,158,11,0.06) 0%, transparent 65%)", borderRadius: "50%", pointerEvents: "none" }} />
 
-  useEffect(() => {
-    const fetchFeatured = async () => {
-      const data = await getFeaturedListings();
-      setFeatured(data);
-    };
-    fetchFeatured();
-  }, []);
+        <div style={{ position: "relative", zIndex: 1, maxWidth: "860px" }}>
 
-  return (
-    <div>
-      {/* ── Hero ───────────────────────────────────────────────── */}
-      <section
-        style={{
-          position: "relative",
-          minHeight: "calc(100vh - 64px)",
-          display: "flex",
-          alignItems: "center",
-          overflow: "hidden",
-        }}
-      >
-        {/* Background image */}
-        <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
-          <Image
-            src="https://picsum.photos/seed/bambili-hero/1600/900"
-            alt="Student housing in Bambili"
-            fill
-            priority
-            style={{ objectFit: "cover" }}
-          />
-          <div
-            className="hero-overlay"
-            style={{ position: "absolute", inset: 0 }}
-          />
-          {/* dot grid decorative */}
-          <div
-            className="dot-grid"
-            style={{
-              position: "absolute",
-              inset: 0,
-              opacity: 0.4,
-            }}
-          />
-        </div>
-
-        {/* Hero content */}
-        <div
-          style={{
-            position: "relative",
-            zIndex: 1,
-            maxWidth: "1280px",
-            margin: "0 auto",
-            padding: "5rem 1.5rem",
-            width: "100%",
-          }}
-        >
-          <div style={{ maxWidth: "680px" }}>
-            <span
-              className="badge badge-featured anim-fade-up"
-              style={{
-                marginBottom: "1.5rem",
-                display: "inline-flex",
-                padding: "0.5rem 1rem",
-                fontSize: "0.85rem",
-                fontWeight: 600,
-                background: "rgba(20, 184, 166, 0.15)",
-                border: "1px solid rgba(20, 184, 166, 0.3)",
-                borderRadius: "9999px",
-              }}
-            >
-              ✨ Built for UBa Students
+          {/* Eyebrow pill */}
+          <div className="anim-fade-up" style={{
+            display: "inline-flex", alignItems: "center", gap: "0.625rem",
+            padding: "0.45rem 1.125rem 0.45rem 0.75rem",
+            background: "rgba(59,130,246,0.1)",
+            border: "1px solid rgba(59,130,246,0.22)",
+            borderRadius: "9999px",
+            marginBottom: "2.25rem",
+          }}>
+            <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: "#3b82f6", animation: "pulse-dot 2s ease-in-out infinite", flexShrink: 0 }} />
+            <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "#93c5fd", letterSpacing: "0.02em" }}>
+              Built exclusively for UBa students in Bambili
             </span>
+          </div>
 
-            <h1
-              className="anim-fade-up delay-100"
-              style={{
-                fontSize: "clamp(2.5rem, 7vw, 4rem)",
-                fontWeight: 900,
-                lineHeight: 1.15,
-                letterSpacing: "-0.04em",
-                marginBottom: "1.5rem",
-                color: "var(--text)",
-              }}
-            >
-              Find your perfect{" "}
-              <span className="gradient-text" style={{ fontSize: "inherit" }}>student room</span>
-              {" "}in Bambili
-            </h1>
+          {/* Headline */}
+          <h1 className="anim-fade-up delay-100" style={{
+            fontSize: "clamp(3rem, 7.5vw, 5.5rem)",
+            fontWeight: 900,
+            lineHeight: 1.04,
+            letterSpacing: "-0.045em",
+            color: "#f1f5f9",
+            marginBottom: "1.75rem",
+          }}>
+            Find your perfect{" "}
+            <span style={{
+              background: "linear-gradient(120deg, #93c5fd 0%, #3b82f6 45%, #818cf8 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}>
+              student room
+            </span>
+            <br />in Bambili
+          </h1>
 
-            <p
-              className="anim-fade-up delay-200"
-              style={{
-                fontSize: "1.125rem",
-                color: "var(--text-subtle)",
-                lineHeight: 1.8,
-                marginBottom: "2.5rem",
-                maxWidth: "55ch",
-                fontWeight: 400,
-              }}
-            >
-              Verified listings, transparent pricing, and direct landlord contact. No agents, no hidden fees, no stress.
-            </p>
+          {/* Subheading */}
+          <p className="anim-fade-up delay-200" style={{
+            fontSize: "clamp(1rem, 2.5vw, 1.1875rem)",
+            color: "#94a3b8",
+            lineHeight: 1.8,
+            maxWidth: "52ch",
+            margin: "0 auto 3rem",
+            fontWeight: 400,
+          }}>
+            Verified listings, transparent pricing, and direct landlord contact.
+            No agents. No hidden fees. Just housing that works.
+          </p>
 
-            <div
-              className="anim-fade-up delay-300"
-              style={{ display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "center" }}
-            >
-              <HeroCTA />
-              <Link
-                href="#how-it-works"
-                className="btn btn-outline"
-                style={{
-                  padding: "0.75rem 1.5rem",
-                  fontSize: "1rem",
-                  fontWeight: 600,
-                }}
-              >
-                See how it works →
-              </Link>
-            </div>
+          {/* CTA row */}
+          <div className="anim-fade-up delay-300" style={{
+            display: "flex", gap: "1rem", justifyContent: "center",
+            flexWrap: "wrap", marginBottom: "5rem",
+          }}>
+            <CTAButton label="🏠 Browse All Listings" />
+            <Link href="#how-it-works" className="btn btn-outline" style={{ padding: "1rem 2.25rem", fontSize: "1rem", fontWeight: 600 }}>
+              See how it works
+            </Link>
+          </div>
 
-            {/* Stats bar */}
-            <div
-              className="anim-fade-up delay-400"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                gap: "2.5rem",
-                marginTop: "4rem",
-                maxWidth: "400px",
-              }}
-            >
-              {[
-                { value: "8+", label: "Verified Listings" },
-                { value: "300+", label: "Students Housed" },
-                { value: "100%", label: "Direct Landlords" },
-              ].map((stat) => (
-                <div key={stat.label} style={{ borderLeft: "2px solid var(--primary)", paddingLeft: "1rem" }}>
-                  <div
-                    style={{
-                      fontSize: "2rem",
-                      fontWeight: 900,
-                      color: "var(--primary)",
-                      lineHeight: 1,
-                    }}
-                  >
-                    {stat.value}
-                  </div>
-                  <div
-                    style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "0.5rem", fontWeight: 500 }}
-                  >
-                    {stat.label}
-                  </div>
+          {/* Stats row */}
+          <div className="anim-fade-up delay-400" style={{
+            display: "inline-flex",
+            background: "rgba(255,255,255,0.03)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: "1.125rem",
+            overflow: "hidden",
+          }}>
+            {stats.map((s, i) => (
+              <div key={s.label} style={{
+                padding: "1.375rem 2.25rem",
+                textAlign: "center",
+                borderRight: i < stats.length - 1 ? "1px solid rgba(255,255,255,0.07)" : "none",
+              }}>
+                <div style={{ fontSize: "1.875rem", fontWeight: 900, color: "#93c5fd", lineHeight: 1, letterSpacing: "-0.04em" }}>
+                  {s.value}
                 </div>
-              ))}
-            </div>
+                <div style={{ fontSize: "0.6875rem", color: "#64748b", marginTop: "0.4rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  {s.label}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ── How it Works ──────────────────────────────────────── */}
-      <section
-        style={{
-          padding: "7rem 1.5rem",
-          background: "linear-gradient(135deg, var(--bg-card) 0%, rgba(20, 184, 166, 0.02) 100%)",
-          borderTop: "1px solid var(--border)",
-          borderBottom: "1px solid var(--border)",
-        }}
-      >
-        <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
+      {/* ╔══════════════════════════════════════════════════════════╗
+          ║  2. WHY BAMBIHOMES  — Value propositions grid            ║
+          ╚══════════════════════════════════════════════════════════╝ */}
+      <section style={{ padding: "7rem 1.5rem", background: "#111827", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+        <div style={{ maxWidth: "1140px", margin: "0 auto" }}>
+
           <div style={{ textAlign: "center", marginBottom: "4rem" }}>
-            <p className="section-label" style={{ marginBottom: "0.75rem", fontSize: "0.85rem", fontWeight: 600 }}>
-              OUR PROCESS
+            <p style={{ fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#3b82f6", marginBottom: "0.75rem" }}>
+              Why BambiHomes
             </p>
-            <h2 className="section-title" style={{ marginBottom: "1.25rem", fontSize: "2.25rem", fontWeight: 800 }}>
-              How BambiHomes Works
+            <h2 style={{ fontSize: "clamp(1.875rem, 4vw, 2.75rem)", fontWeight: 800, letterSpacing: "-0.035em", color: "#f1f5f9", marginBottom: "1rem" }}>
+              The smarter way to find student housing
             </h2>
-            <p className="section-desc" style={{ margin: "0 auto", fontSize: "1.0625rem", color: "var(--text-subtle)" }}>
-              Find your next home in three simple steps.
+            <p style={{ color: "#94a3b8", fontSize: "1.0625rem", maxWidth: "46ch", margin: "0 auto" }}>
+              We built BambiHomes to solve the exact problems UBa students face every year.
             </p>
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-              gap: "2rem",
-            }}
-          >
-            {steps.map((step, i) => (
-              <div
-                key={step.title}
-                className="card-lift"
-                style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius-lg)",
-                  padding: "2.5rem",
-                  position: "relative",
-                  overflow: "hidden",
-                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
-                  transition: "all 0.3s ease",
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.25rem" }}>
+            {whyItems.map((item, i) => (
+              <div key={item.title} style={{
+                background: "#0b0f19",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: "1.125rem",
+                padding: "2rem",
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.875rem",
+                transition: "border-color 0.2s ease, transform 0.2s ease",
+              }}
+                onMouseEnter={e => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.borderColor = "rgba(59,130,246,0.3)";
+                  el.style.transform = "translateY(-3px)";
                 }}
-                onMouseEnter={(e) => {
-                  const el = e.currentTarget as HTMLDivElement;
-                  el.style.boxShadow = "0 12px 24px rgba(20, 184, 166, 0.15)";
-                  el.style.transform = "translateY(-4px)";
-                }}
-                onMouseLeave={(e) => {
-                  const el = e.currentTarget as HTMLDivElement;
-                  el.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.05)";
+                onMouseLeave={e => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.borderColor = "rgba(255,255,255,0.07)";
                   el.style.transform = "translateY(0)";
                 }}
               >
-                {/* Step number watermark */}
-                <span
-                  style={{
-                    position: "absolute",
-                    top: "1.5rem",
-                    right: "1.5rem",
-                    fontSize: "3.5rem",
-                    fontWeight: 900,
-                    color: "rgba(20,184,166,0.08)",
-                    lineHeight: 1,
-                    userSelect: "none",
-                  }}
-                >
-                  {i + 1}
-                </span>
-
-                <div
-                  style={{
-                    fontSize: "2.75rem",
-                    marginBottom: "1.25rem",
-                    display: "inline-block",
-                  }}
-                >
-                  {step.icon}
+                <div style={{
+                  width: "46px", height: "46px",
+                  background: "rgba(59,130,246,0.1)",
+                  border: "1px solid rgba(59,130,246,0.18)",
+                  borderRadius: "12px",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "1.375rem",
+                }}>
+                  {item.icon}
                 </div>
-                <h3
-                  style={{
-                    fontSize: "1.375rem",
-                    fontWeight: 700,
-                    marginBottom: "0.75rem",
-                    color: "var(--text)",
-                  }}
-                >
-                  {step.title}
+                <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.01em" }}>
+                  {item.title}
                 </h3>
-                <p style={{ color: "var(--text-subtle)", lineHeight: 1.7, fontSize: "0.9375rem", fontWeight: 400 }}>
-                  {step.desc}
+                <p style={{ color: "#94a3b8", fontSize: "0.9375rem", lineHeight: 1.7 }}>
+                  {item.desc}
                 </p>
               </div>
             ))}
@@ -333,257 +357,406 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Featured Listings ─────────────────────────────────── */}
-      <section style={{ padding: "6rem 1.5rem" }}>
-        <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-end",
-              marginBottom: "2.5rem",
-              gap: "1rem",
-              flexWrap: "wrap",
-            }}
-          >
+      {/* ╔══════════════════════════════════════════════════════════╗
+          ║  3. HOW IT WORKS                                         ║
+          ╚══════════════════════════════════════════════════════════╝ */}
+      <section id="how-it-works" style={{ padding: "7rem 1.5rem", background: "#0b0f19", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+        <div style={{ maxWidth: "1140px", margin: "0 auto" }}>
+
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "1rem", marginBottom: "4rem" }}>
             <div>
-              <p className="section-label" style={{ marginBottom: "0.5rem" }}>
-                Verified Properties
+              <p style={{ fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#3b82f6", marginBottom: "0.75rem" }}>
+                Our Process
               </p>
-              <h2 className="section-title">Available Student Housing</h2>
+              <h2 style={{ fontSize: "clamp(1.875rem, 4vw, 2.75rem)", fontWeight: 800, letterSpacing: "-0.035em", color: "#f1f5f9" }}>
+                Get housed in 3 simple steps
+              </h2>
             </div>
-            <Link href="/listings" className="btn btn-outline btn-sm">
-              View all listings →
-            </Link>
+            <CTAButton label="Get Started →" size="sm" variant="outline" />
           </div>
 
-          {/* Featured listings section */}
-          {featured.length > 0 ? (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-                gap: "2rem",
-              }}
-            >
-              {featured.map((listing) => (
-                <ListingCard key={listing.id} listing={listing} />
-              ))}
-            </div>
-          ) : (
-            <div
-              style={{
-                background: "var(--bg-card)",
-                border: "2px dashed var(--border)",
-                borderRadius: "var(--radius-xl)",
-                padding: "4rem 2rem",
-                textAlign: "center",
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))", gap: "1.5rem" }}>
+            {steps.map((s, i) => (
+              <div key={s.num} style={{
+                background: "#111827",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: "1.25rem",
+                padding: "2.25rem",
                 position: "relative",
                 overflow: "hidden",
+                transition: "border-color 0.2s ease, transform 0.2s ease",
               }}
-            >
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background: "linear-gradient(135deg, rgba(20,184,166,0.02) 0%, rgba(13,148,136,0.01) 100%)",
-                  opacity: 0.5,
+                onMouseEnter={e => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.borderColor = "rgba(59,130,246,0.3)";
+                  el.style.transform = "translateY(-3px)";
                 }}
-              />
-              <div style={{ position: "relative", zIndex: 1 }}>
-                <div style={{ fontSize: "4rem", marginBottom: "1.5rem" }}>🏠</div>
-                <h3
-                  style={{
-                    fontSize: "1.5rem",
-                    fontWeight: 700,
-                    marginBottom: "1rem",
-                    color: "var(--text)",
-                  }}
-                >
-                  Featured listings arriving soon
-                </h3>
-                <p
-                  style={{
-                    color: "var(--text-subtle)",
-                    fontSize: "1rem",
-                    marginBottom: "2rem",
-                    maxWidth: "48ch",
-                    margin: "0 auto 2rem",
-                  }}
-                >
-                  We are currently verifying the latest housing options in Bambili. 
-                  Check back in a few minutes or browse all listings now.
-                </p>
-                <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
-                  <HeroCTA />
-                  <Link href="/listings" className="btn btn-outline">
-                    Browse All Listings
-                  </Link>
+                onMouseLeave={e => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.borderColor = "rgba(255,255,255,0.07)";
+                  el.style.transform = "translateY(0)";
+                }}
+              >
+                <div style={{
+                  position: "absolute", top: "-1rem", right: "1.5rem",
+                  fontSize: "6rem", fontWeight: 900,
+                  color: "rgba(59,130,246,0.04)",
+                  lineHeight: 1, userSelect: "none", fontFamily: "monospace",
+                }}>
+                  {s.num}
                 </div>
+                <div style={{ position: "absolute", top: 0, right: 0, width: "140px", height: "140px", background: `radial-gradient(circle at top right, rgba(59,130,246,${0.05 + i * 0.025}), transparent 70%)`, pointerEvents: "none" }} />
+
+                <div style={{
+                  width: "52px", height: "52px",
+                  background: "rgba(59,130,246,0.1)",
+                  border: "1px solid rgba(59,130,246,0.2)",
+                  borderRadius: "14px",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "1.5rem", marginBottom: "1.75rem",
+                }}>
+                  {s.icon}
+                </div>
+
+                <p style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#60a5fa", marginBottom: "0.625rem" }}>
+                  Step {i + 1} of 3
+                </p>
+                <h3 style={{ fontSize: "1.125rem", fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.02em", marginBottom: "0.75rem" }}>
+                  {s.title}
+                </h3>
+                <p style={{ color: "#94a3b8", lineHeight: 1.75, fontSize: "0.9375rem" }}>
+                  {s.desc}
+                </p>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ╔══════════════════════════════════════════════════════════╗
+          ║  4. FEATURED LISTINGS                                    ║
+          ╚══════════════════════════════════════════════════════════╝ */}
+      <section style={{ padding: "7rem 1.5rem", background: "#111827", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+        <div style={{ maxWidth: "1140px", margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "3rem", gap: "1rem", flexWrap: "wrap" }}>
+            <div>
+              <p style={{ fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#3b82f6", marginBottom: "0.5rem" }}>
+                Verified Properties
+              </p>
+              <h2 style={{ fontSize: "clamp(1.875rem, 4vw, 2.75rem)", fontWeight: 800, letterSpacing: "-0.035em", color: "#f1f5f9" }}>
+                Available Student Housing
+              </h2>
+            </div>
+            <Link href="/listings" className="btn btn-outline btn-sm">View all listings →</Link>
+          </div>
+
+          {featured.length > 0 ? (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1.5rem" }}>
+              {featured.map(l => <ListingCard key={l.id} listing={l} />)}
+            </div>
+          ) : (
+            <div style={{
+              padding: "4.5rem 2rem", textAlign: "center",
+              border: "2px dashed rgba(255,255,255,0.06)",
+              borderRadius: "1.25rem",
+            }}>
+              <div style={{ fontSize: "3.5rem", marginBottom: "1.25rem" }}>🏠</div>
+              <h3 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#f1f5f9", marginBottom: "0.625rem" }}>
+                Featured listings arriving soon
+              </h3>
+              <p style={{ color: "#94a3b8", fontSize: "0.9375rem", maxWidth: "38ch", margin: "0 auto 2rem" }}>
+                We&apos;re verifying the latest options. Browse all available listings now.
+              </p>
+              <Link href="/listings" className="btn btn-primary btn-sm">Browse All Listings</Link>
             </div>
           )}
         </div>
       </section>
 
-      {/* ── Testimonials ──────────────────────────────────────── */}
-      <section
-        style={{
-          padding: "7rem 1.5rem",
-          background: "linear-gradient(135deg, var(--bg-card) 0%, rgba(13, 148, 136, 0.02) 100%)",
-          borderTop: "1px solid var(--border)",
-          borderBottom: "1px solid var(--border)",
-        }}
-      >
-        <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
+      {/* ╔══════════════════════════════════════════════════════════╗
+          ║  5. TESTIMONIALS & REVIEWS                               ║
+          ╚══════════════════════════════════════════════════════════╝ */}
+      <section style={{ padding: "7rem 1.5rem", background: "#0b0f19", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+        <div style={{ maxWidth: "1140px", margin: "0 auto" }}>
+
           <div style={{ textAlign: "center", marginBottom: "4rem" }}>
-            <p className="section-label" style={{ marginBottom: "0.75rem", fontSize: "0.85rem", fontWeight: 600 }}>
-              STUDENT REVIEWS
+            <p style={{ fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#3b82f6", marginBottom: "0.75rem" }}>
+              Student Reviews
             </p>
-            <h2 className="section-title" style={{ marginBottom: "1rem", fontSize: "2.25rem", fontWeight: 800 }}>
-              What Students Say About BambiHomes
+            <h2 style={{ fontSize: "clamp(1.875rem, 4vw, 2.75rem)", fontWeight: 800, letterSpacing: "-0.035em", color: "#f1f5f9", marginBottom: "1rem" }}>
+              Trusted by students across UBa
             </h2>
-            <p style={{ color: "var(--text-subtle)", fontSize: "1.0625rem" }}>Real feedback from real students who found housing.</p>
+            <p style={{ color: "#94a3b8", fontSize: "1.0625rem", maxWidth: "44ch", margin: "0 auto" }}>
+              Real feedback from students who found their housing on BambiHomes.
+            </p>
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-              gap: "2rem",
-            }}
-          >
-            {testimonials.map((t) => (
-              <div
-                key={t.name}
-                className="glass"
-                style={{
-                  borderRadius: "var(--radius-lg)",
-                  padding: "2.5rem",
-                  border: "1px solid var(--border)",
-                  background: "var(--bg-elevated)",
-                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.06)",
-                  transition: "all 0.3s ease",
-                }}
-                onMouseEnter={(e) => {
-                  const el = e.currentTarget as HTMLDivElement;
-                  el.style.transform = "translateY(-2px)";
-                  el.style.boxShadow = "0 12px 24px rgba(20, 184, 166, 0.12)";
-                }}
-                onMouseLeave={(e) => {
-                  const el = e.currentTarget as HTMLDivElement;
-                  el.style.transform = "translateY(0)";
-                  el.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.06)";
-                }}
-              >
-                <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem" }}>
-                  {[...Array(5)].map((_, i) => (
-                    <span key={i} style={{ fontSize: "1.1rem" }}>⭐</span>
-                  ))}
+          {/* Website Review Form - Only visible for registered students */}
+          {user?.role === "student" && (
+            <div
+              style={{
+                background: "rgba(255, 255, 255, 0.02)",
+                border: "1px solid rgba(255, 255, 255, 0.08)",
+                borderRadius: "1.25rem",
+                padding: "2.5rem",
+                marginBottom: "4rem",
+                boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.37)",
+                backdropFilter: "blur(4px)",
+              }}
+            >
+              <h3 style={{ fontSize: "1.25rem", fontWeight: 800, color: "#f1f5f9", marginBottom: "0.5rem" }}>
+                How was your experience with BambiHomes?
+              </h3>
+              <p style={{ color: "#94a3b8", fontSize: "0.9rem", marginBottom: "1.5rem" }}>
+                Leave a review about our platform to help other students find better housing!
+              </p>
+
+              {submitSuccess && (
+                <div style={{ background: "rgba(16, 185, 129, 0.1)", border: "1px solid rgba(16, 185, 129, 0.2)", color: "#34d399", padding: "1rem", borderRadius: "var(--radius)", fontSize: "0.9375rem", marginBottom: "1.5rem" }}>
+                  ✅ Thank you! Your review has been submitted successfully and is now live.
                 </div>
-                <p
+              )}
+
+              {submitError && (
+                <div style={{ background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.2)", color: "#f87171", padding: "1rem", borderRadius: "var(--radius)", fontSize: "0.9375rem", marginBottom: "1.5rem" }}>
+                  ⚠️ {submitError}
+                </div>
+              )}
+
+              <form onSubmit={handleReviewSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                {/* Star rating selector */}
+                <div>
+                  <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 600, color: "#cbd5e1", marginBottom: "0.5rem" }}>
+                    Your Rating
+                  </label>
+                  <div style={{ display: "flex", gap: "0.375rem" }}>
+                    {[1, 2, 3, 4, 5].map((star) => {
+                      const isHighlighted = hoverRating ? star <= hoverRating : star <= rating;
+                      return (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setRating(star)}
+                          onMouseEnter={() => setHoverRating(star)}
+                          onMouseLeave={() => setHoverRating(0)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            fontSize: "2rem",
+                            color: isHighlighted ? "#f59e0b" : "#475569",
+                            padding: "0",
+                            transition: "transform 0.15s ease, color 0.15s ease",
+                            transform: isHighlighted ? "scale(1.15)" : "scale(1)",
+                            textShadow: isHighlighted ? "0 0 10px rgba(245, 158, 11, 0.4)" : "none",
+                          }}
+                        >
+                          ★
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Comment area */}
+                <div className="form-group">
+                  <label htmlFor="comment" className="form-label">
+                    Your Review
+                  </label>
+                  <textarea
+                    id="comment"
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder="Tell us what you liked, what we can improve, or how BambiHomes helped you find your room..."
+                    required
+                    rows={4}
+                    className="input"
+                    style={{
+                      width: "100%",
+                      padding: "0.875rem",
+                      background: "var(--bg-input)",
+                      border: "1px solid var(--border-light)",
+                      borderRadius: "var(--radius)",
+                      color: "var(--text)",
+                      fontFamily: "inherit",
+                      fontSize: "0.9375rem",
+                      resize: "vertical",
+                    }}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="btn btn-primary"
                   style={{
-                    color: "var(--text)",
-                    lineHeight: 1.8,
-                    fontSize: "1rem",
-                    marginBottom: "1.75rem",
-                    fontWeight: 500,
+                    alignSelf: "flex-start",
+                    padding: "0.75rem 2rem",
+                    fontSize: "0.9375rem",
+                    fontWeight: 700,
+                    opacity: isSubmitting ? 0.7 : 1,
                   }}
                 >
-                  &ldquo;{t.text}&rdquo;
-                </p>
-                <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                  <div
-                    style={{
-                      width: "44px",
-                      height: "44px",
-                      borderRadius: "50%",
-                      background: "linear-gradient(135deg, var(--primary), var(--primary-dark))",
+                  {isSubmitting ? (
+                    <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <span className="spinner spinner-sm" /> Submitting...
+                    </span>
+                  ) : "Submit Review →"}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* Testimonials/Reviews Grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(310px, 1fr))", gap: "1.5rem" }}>
+            {reviews.length > 0
+              ? reviews.map((r) => {
+                  const initials = r.name ? r.name.charAt(0).toUpperCase() : "S";
+                  const hue = (r.name.charCodeAt(0) * 13) % 360;
+                  const formattedDept = r.role === "admin"
+                    ? "Administrator"
+                    : r.role === "landlord"
+                    ? "Property Owner"
+                    : `${r.faculty || "UBa Student"}${r.level ? ` · Level ${r.level}` : ""}`;
+                  return (
+                    <div key={r.id} style={{
+                      background: "#111827",
+                      border: "1px solid rgba(255,255,255,0.07)",
+                      borderRadius: "1.25rem",
+                      padding: "2.25rem",
+                      position: "relative",
+                      overflow: "hidden",
                       display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontWeight: 700,
-                      fontSize: "1.1rem",
-                      color: "#fff",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {t.avatar}
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--text)" }}>
-                      {t.name}
+                      flexDirection: "column",
+                      boxShadow: "var(--shadow-md)",
+                    }}>
+                      <div style={{ position: "absolute", top: 0, right: "1.25rem", fontSize: "7rem", fontWeight: 900, color: "rgba(255,255,255,0.02)", lineHeight: 1, userSelect: "none", fontFamily: "Georgia, serif" }}>&ldquo;</div>
+
+                      {/* Stars */}
+                      <div style={{ display: "flex", gap: "2px", marginBottom: "1.25rem" }}>
+                        {[...Array(5)].map((_, si) => (
+                          <span key={si} style={{ color: si < r.rating ? "#f59e0b" : "#475569", fontSize: "0.9rem" }}>★</span>
+                        ))}
+                      </div>
+
+                      <p style={{ color: "#cbd5e1", lineHeight: 1.8, fontSize: "0.9375rem", flex: 1, marginBottom: "1.75rem", position: "relative" }}>
+                        &ldquo;{r.comment}&rdquo;
+                      </p>
+
+                      <div style={{ height: "1px", background: "rgba(255,255,255,0.07)", marginBottom: "1.5rem" }} />
+
+                      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                        <div style={{
+                          width: "44px",
+                          height: "44px",
+                          borderRadius: "50%",
+                          background: `linear-gradient(135deg, hsl(${hue},70%,62%), hsl(${hue},80%,47%))`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontWeight: 800,
+                          fontSize: "1rem",
+                          color: "#fff",
+                          flexShrink: 0,
+                          boxShadow: `0 4px 14px hsla(${hue},70%,50%,0.3)`,
+                          overflow: "hidden",
+                          position: "relative",
+                        }}>
+                          {r.avatar_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={r.avatar_url} alt={r.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          ) : (
+                            initials
+                          )}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: "0.9375rem", color: "#f1f5f9" }}>{r.name}</div>
+                          <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "0.125rem" }}>{formattedDept}</div>
+                        </div>
+                      </div>
                     </div>
-                    <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 500 }}>
-                      {t.dept}
+                  );
+                })
+              : testimonials.map((t) => (
+                  <div key={t.name} style={{
+                    background: "#111827",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    borderRadius: "1.25rem",
+                    padding: "2.25rem",
+                    position: "relative",
+                    overflow: "hidden",
+                    display: "flex",
+                    flexDirection: "column",
+                  }}>
+                    <div style={{ position: "absolute", top: 0, right: "1.25rem", fontSize: "7rem", fontWeight: 900, color: "rgba(255,255,255,0.02)", lineHeight: 1, userSelect: "none", fontFamily: "Georgia, serif" }}>&ldquo;</div>
+
+                    {/* Stars */}
+                    <div style={{ display: "flex", gap: "2px", marginBottom: "1.25rem" }}>
+                      {[...Array(5)].map((_, si) => (
+                        <span key={si} style={{ color: "#f59e0b", fontSize: "0.9rem" }}>★</span>
+                      ))}
+                    </div>
+
+                    <p style={{ color: "#cbd5e1", lineHeight: 1.8, fontSize: "0.9375rem", flex: 1, marginBottom: "1.75rem", position: "relative" }}>
+                      &ldquo;{t.text}&rdquo;
+                    </p>
+
+                    <div style={{ height: "1px", background: "rgba(255,255,255,0.07)", marginBottom: "1.5rem" }} />
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                      <div style={{
+                        width: "44px", height: "44px", borderRadius: "50%",
+                        background: `linear-gradient(135deg, hsl(${t.hue},70%,62%), hsl(${t.hue},80%,47%))`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontWeight: 800, fontSize: "1rem", color: "#fff", flexShrink: 0,
+                        boxShadow: `0 4px 14px hsla(${t.hue},70%,50%,0.3)`,
+                      }}>
+                        {t.avatar}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: "0.9375rem", color: "#f1f5f9" }}>{t.name}</div>
+                        <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "0.125rem" }}>{t.dept}</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                ))}
           </div>
         </div>
       </section>
 
-      {/* ── CTA Banner ───────────────────────────────────────── */}
-      <section style={{ padding: "7rem 1.5rem", background: "var(--bg)" }}>
-        <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
-          <div
-            style={{
-              background:
-                "linear-gradient(135deg, rgba(20,184,166,0.15) 0%, rgba(13,148,136,0.08) 100%)",
-              border: "1px solid rgba(20,184,166,0.25)",
-              borderRadius: "var(--radius-xl)",
-              padding: "5rem 3rem",
-              textAlign: "center",
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              className="dot-grid"
-              style={{ position: "absolute", inset: 0, opacity: 0.3 }}
-            />
-            <div style={{ position: "relative", zIndex: 1 }}>
-              <h2
-                style={{
-                  fontSize: "clamp(2rem, 5vw, 3rem)",
-                  fontWeight: 900,
-                  marginBottom: "1.25rem",
-                  lineHeight: 1.2,
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                Ready to find your home <span className="gradient-text">in Bambili?</span>
-              </h2>
-              <p
-                style={{
-                  fontSize: "1.125rem",
-                  color: "var(--text-subtle)",
-                  marginBottom: "2.5rem",
-                  maxWidth: "52ch",
-                  margin: "0 auto 2.5rem",
-                  fontWeight: 400,
-                }}
-              >
-                Join hundreds of students who have found their perfect housing. Browse verified listings today.
-              </p>
-              <Link
-                href="/listings"
-                className="btn btn-accent"
-                id="cta-find-house-btn"
-                style={{
-                  padding: "0.875rem 1.75rem",
-                  fontSize: "1rem",
-                  fontWeight: 600,
-                }}
-              >
-                🏠 Explore All Listings
-              </Link>
-            </div>
+      {/* ╔══════════════════════════════════════════════════════════╗
+          ║  6. FINAL CTA                                            ║
+          ╚══════════════════════════════════════════════════════════╝ */}
+      <section style={{ padding: "8rem 1.5rem", background: "#111827", borderTop: "1px solid rgba(255,255,255,0.07)", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: "-80px", left: "50%", transform: "translateX(-50%)", width: "600px", height: "400px", background: "radial-gradient(ellipse, rgba(59,130,246,0.08) 0%, transparent 65%)", pointerEvents: "none" }} />
+
+        <div style={{ position: "relative", zIndex: 1, maxWidth: "680px", margin: "0 auto", textAlign: "center" }}>
+          <p style={{ fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#3b82f6", marginBottom: "1.25rem" }}>
+            Get Started — It&apos;s Free
+          </p>
+          <h2 style={{ fontSize: "clamp(2.25rem, 5vw, 3.75rem)", fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.06, color: "#f1f5f9", marginBottom: "1.5rem" }}>
+            Ready to find your home{" "}
+            <span style={{
+              background: "linear-gradient(120deg, #93c5fd, #3b82f6, #818cf8)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}>
+              in Bambili?
+            </span>
+          </h2>
+          <p style={{ fontSize: "1.0625rem", color: "#94a3b8", lineHeight: 1.75, maxWidth: "46ch", margin: "0 auto 3rem" }}>
+            Join hundreds of students who found their perfect housing through BambiHomes — verified listings, zero hidden fees.
+          </p>
+          <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
+            <CTAButton label="🏠 Browse Listings" />
+            <Link href="/signup" className="btn btn-outline" style={{ padding: "1rem 2.25rem", fontSize: "1rem", fontWeight: 600 }}>
+              Create Free Account →
+            </Link>
           </div>
         </div>
       </section>
-    </div>
+
+    </main>
   );
 }

@@ -1,18 +1,75 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useSavedListings } from "@/hooks/useSavedListings";
 import { getAllApprovedListings } from "@/lib/data";
+import { supabase } from "@/lib/supabase";
 
 export default function ProfilePage() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshProfile } = useAuth();
   const { saved } = useSavedListings();
   const [listingStats, setListingStats] = useState({
     total: 0,
     available: 0
   });
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !user) return;
+
+    const file = files[0];
+    if (file.size > 1024 * 1024 * 2) {
+      setUploadError("Image size must be less than 2MB.");
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadError("");
+
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, { cacheControl: "3600", upsert: true });
+
+      if (uploadError) {
+        console.error("Upload error details:", uploadError);
+        setUploadError("Failed to upload image to storage.");
+        setIsUploading(false);
+        return;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      const { error: dbError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", user.id);
+
+      if (dbError) {
+        console.error("DB update error details:", dbError);
+        setUploadError("Database update failed. Make sure table columns are updated.");
+      } else {
+        await refreshProfile();
+      }
+    } catch (err: any) {
+      console.error("Profile picture upload failed:", err);
+      setUploadError("An unexpected error occurred.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   useEffect(() => {
     async function fetchStats() {
@@ -58,22 +115,95 @@ export default function ProfilePage() {
         >
           <div
             style={{
+              position: "relative",
               width: "90px",
               height: "90px",
               borderRadius: "50%",
-              background: "linear-gradient(135deg, var(--primary), var(--primary-dark))",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "2.5rem",
-              fontWeight: 800,
-              color: "#fff",
               margin: "0 auto 1.25rem",
               boxShadow: "0 0 0 4px rgba(20,184,166,0.2)",
             }}
           >
-            {user.name.charAt(0)}
+            {user.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt={user.name}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, var(--primary), var(--primary-dark))",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "2.5rem",
+                  fontWeight: 800,
+                  color: "#fff",
+                }}
+              >
+                {user.name.charAt(0)}
+              </div>
+            )}
+
+            {(user.role === "admin" || user.role === "landlord" || user.role === "student") && (
+              <>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  style={{
+                    position: "absolute",
+                    bottom: "-4px",
+                    right: "-4px",
+                    background: "var(--primary)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "50%",
+                    width: "30px",
+                    height: "30px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "14px",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                    transition: "all 0.2s ease",
+                    zIndex: 10,
+                  }}
+                  title="Upload Profile Picture"
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.1)";
+                    (e.currentTarget as HTMLButtonElement).style.background = "var(--primary-dark)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
+                    (e.currentTarget as HTMLButtonElement).style.background = "var(--primary)";
+                  }}
+                >
+                  {isUploading ? "⏳" : "📷"}
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleAvatarChange}
+                  accept="image/*"
+                  style={{ display: "none" }}
+                />
+              </>
+            )}
           </div>
+          {uploadError && (
+            <p style={{ fontSize: "0.75rem", color: "#ef4444", marginTop: "-0.5rem", marginBottom: "1rem" }}>
+              {uploadError}
+            </p>
+          )}
           <h2
             style={{
               fontSize: "1.125rem",

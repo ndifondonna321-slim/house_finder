@@ -9,9 +9,11 @@ export interface Profile {
   role: UserRole;
   status: ProfileStatus;
   email?: string;
+  phone?: string;
   level?: string;
   faculty?: string;
   createdAt: string;
+  avatarUrl?: string;
 }
 
 export type RoomType =
@@ -48,6 +50,8 @@ export interface Listing {
   featured?: boolean;
   rejectionReason?: string;
   ownerId?: string;
+  roomNumber?: string;
+  floor?: string;
 }
 
 // Convert Supabase DB listing to Listing interface
@@ -72,6 +76,8 @@ const mapListing = (dbListing: any): Listing => ({
   featured: dbListing.featured,
   rejectionReason: dbListing.rejection_reason,
   ownerId: dbListing.owner_id,
+  roomNumber: dbListing.room_number,
+  floor: dbListing.floor,
 });
 
 export const getListingById = async (id: string): Promise<Listing | undefined> => {
@@ -155,26 +161,41 @@ export const getAllLandlords = async (): Promise<Profile[]> => {
     .eq("role", "landlord")
     .order("created_at", { ascending: false });
 
-  if (error || !data) return [];
+  if (error) {
+    console.error("Error fetching all landlords:", error);
+    return [];
+  }
+  if (!data) return [];
   return data.map((p) => ({
     id: p.id,
     name: p.name,
     role: p.role,
     status: p.status,
+    phone: p.phone,
     level: p.level,
     faculty: p.faculty,
     createdAt: p.created_at,
+    avatarUrl: p.avatar_url,
   }));
 };
 
 export const updateLandlordStatus = async (id: string, status: ProfileStatus): Promise<boolean> => {
+  console.log("Supabase updateLandlordStatus starting...", { id, status });
   // Update profile status
-  const { error: profileError } = await supabase
+  const { count, error: profileError } = await supabase
     .from("profiles")
-    .update({ status })
+    .update({ status }, { count: 'exact' })
     .eq("id", id);
 
-  if (profileError) return false;
+  if (profileError || count === 0) {
+    console.error("Supabase Profile update failure details:", {
+      error: profileError,
+      count: count,
+      attemptedId: id,
+      attemptedStatus: status
+    });
+    return false;
+  }
 
   // If approving landlord, also approve all their pending listings
   if (status === "approved") {
@@ -198,3 +219,77 @@ export const roomTypeLabels: Record<RoomType, string> = {
 
 export const formatPrice = (price: number): string =>
   `${price.toLocaleString("fr-CM")} FCFA/mo`;
+
+export interface WebsiteReview {
+  id: string;
+  user_id: string;
+  name: string;
+  role: string;
+  avatar_url?: string;
+  level?: string;
+  faculty?: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+}
+
+export const getWebsiteReviews = async (): Promise<WebsiteReview[]> => {
+  const { data, error } = await supabase
+    .from("website_reviews")
+    .select(`
+      id,
+      user_id,
+      rating,
+      comment,
+      created_at,
+      profiles (
+        name,
+        role,
+        avatar_url,
+        level,
+        faculty
+      )
+    `)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching website reviews:", error.message);
+    return [];
+  }
+  if (!data) return [];
+
+  return data.map((item: any) => ({
+    id: item.id,
+    user_id: item.user_id,
+    rating: item.rating,
+    comment: item.comment,
+    created_at: item.created_at,
+    name: item.profiles?.name || "Student",
+    role: item.profiles?.role || "student",
+    avatar_url: item.profiles?.avatar_url,
+    level: item.profiles?.level,
+    faculty: item.profiles?.faculty,
+  }));
+};
+
+export const submitWebsiteReview = async (
+  userId: string,
+  rating: number,
+  comment: string
+): Promise<{ success: boolean; error?: string }> => {
+  const { error } = await supabase
+    .from("website_reviews")
+    .insert({
+      user_id: userId,
+      rating,
+      comment,
+    });
+
+  if (error) {
+    console.error("Error submitting review:", error.message);
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+};
+

@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import { getListingById, formatPrice, roomTypeLabels } from "@/lib/data";
 import SaveButton from "./SaveButton";
+import ListingGallery from "@/components/ListingGallery";
 
 export default async function ListingDetailPage({
   params,
@@ -46,37 +46,8 @@ export default async function ListingDetailPage({
         {/* ── Left column ── */}
         <div>
           {/* Image gallery */}
-          <div
-            style={{
-              borderRadius: "var(--radius-xl)",
-              overflow: "hidden",
-              marginBottom: "1.5rem",
-              display: "grid",
-              gridTemplateColumns: "2fr 1fr",
-              gridTemplateRows: "280px 140px",
-              gap: "0.5rem",
-              height: "430px",
-            }}
-          >
-            {listing.images.map((img, i) => (
-              <div
-                key={img}
-                style={{
-                  position: "relative",
-                  gridRow: i === 0 ? "1 / 3" : "auto",
-                  overflow: "hidden",
-                  background: "var(--bg-elevated)",
-                }}
-              >
-                <Image
-                  src={img}
-                  alt={`${listing.title} — photo ${i + 1}`}
-                  fill
-                  style={{ objectFit: "cover" }}
-                  priority={i === 0}
-                />
-              </div>
-            ))}
+          <div style={{ marginBottom: "2rem" }}>
+            <ListingGallery images={listing.images} title={listing.title} />
           </div>
 
           {/* Title + badges */}
@@ -257,6 +228,8 @@ export default async function ListingDetailPage({
                 { icon: "📍", label: "Location", value: listing.location },
                 { icon: "🚶", label: "Campus distance", value: `${listing.distanceFromCampus} min walk` },
                 { icon: "🏠", label: "Room type", value: roomTypeLabels[listing.roomType] },
+                ...(listing.roomNumber ? [{ icon: "🚪", label: "Room No", value: listing.roomNumber }] : []),
+                ...(listing.floor ? [{ icon: "🏢", label: "Floor", value: listing.floor }] : []),
                 {
                   icon: "📅",
                   label: "Listed on",

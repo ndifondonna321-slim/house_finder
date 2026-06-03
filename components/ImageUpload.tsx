@@ -76,7 +76,7 @@ export default function ImageUpload({ onUpload, existingImages = [] }: ImageUplo
       <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
         {images.map((url, i) => (
           <div key={url} style={{ position: "relative", width: "100px", height: "100px", borderRadius: "var(--radius-md)", overflow: "hidden", border: "1px solid var(--border)" }}>
-            <Image src={url} alt="Preview" fill style={{ objectFit: "cover" }} />
+            <Image src={url} alt="Preview" fill sizes="100px" style={{ objectFit: "cover" }} />
             <button
               onClick={() => removeImage(i)}
               style={{

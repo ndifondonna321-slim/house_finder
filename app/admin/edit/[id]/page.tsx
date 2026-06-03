@@ -39,6 +39,8 @@ export default function AdminEditListingPage({
     landlordName: "",
     landlordPhone: "",
     landlordWhatsApp: "",
+    roomNumber: "",
+    floor: "",
   });
 
   useEffect(() => {
@@ -60,6 +62,8 @@ export default function AdminEditListingPage({
         landlordName: listing.landlord.name,
         landlordPhone: listing.landlord.phone,
         landlordWhatsApp: listing.landlord.whatsapp,
+        roomNumber: listing.roomNumber || "",
+        floor: listing.floor || "",
       });
       setSelectedAmenities(listing.amenities);
       setImages(listing.images);
@@ -97,6 +101,8 @@ export default function AdminEditListingPage({
         landlord_whatsapp: form.landlordWhatsApp,
         amenities: selectedAmenities,
         images: images,
+        // room_number: form.roomNumber,
+        // floor: form.floor,
       })
       .eq("id", id);
 
@@ -210,6 +216,16 @@ export default function AdminEditListingPage({
             <div>
               <label style={labelStyle}>Location *</label>
               <input name="location" className="input" value={form.location} onChange={handleChange} required />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <div>
+                <label style={labelStyle}>Room Number</label>
+                <input name="roomNumber" className="input" value={form.roomNumber} onChange={handleChange} placeholder="e.g. Room 12" />
+              </div>
+              <div>
+                <label style={labelStyle}>Floor</label>
+                <input name="floor" className="input" value={form.floor} onChange={handleChange} placeholder="e.g. 2nd Floor" />
+              </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
               <div>

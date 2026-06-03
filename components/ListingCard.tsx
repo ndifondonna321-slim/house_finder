@@ -17,16 +17,18 @@ export default function ListingCard({ listing, isSaved, onToggleSave }: ListingC
   const router = useRouter();
   const whatsappUrl = `https://wa.me/${listing.landlord.whatsapp}?text=Hi, I am interested in your listing: ${listing.title}`;
 
-  const handleContact = (e: React.MouseEvent, type: "whatsapp" | "phone") => {
+  const handleContact = (e: React.MouseEvent) => {
     if (!user) {
       e.preventDefault();
-      if (confirm("You must be logged in to contact landlords. Go to login page?")) {
-        router.push("/login");
-      }
-      return;
+      router.push("/login");
     }
-    // For phone calls, we don't preventDefault if user exists
-    // For WhatsApp, we don't preventDefault if user exists
+  };
+
+  const handleViewDetails = (e: React.MouseEvent) => {
+    if (!user) {
+      e.preventDefault();
+      router.push(`/signup?redirect=${encodeURIComponent(`/listing/${listing.id}`)}`);
+    }
   };
 
   return (
@@ -34,128 +36,178 @@ export default function ListingCard({ listing, isSaved, onToggleSave }: ListingC
       className="card-lift"
       style={{
         background: "var(--bg-card)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius-lg)",
+        borderRadius: "var(--radius-xl)",
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
-        transition: "all 0.3s ease",
-        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+        boxShadow: "var(--shadow-lg)",
       }}
     >
-      {/* Image Section */}
-      <div style={{ position: "relative", height: "200px", width: "100%" }}>
+      {/* ── Image Section ── */}
+      <div style={{ position: "relative", height: "210px", width: "100%", overflow: "hidden" }}>
         <Image
           src={listing.images[0] || "https://picsum.photos/seed/placeholder/800/600"}
           alt={listing.title}
           fill
-          style={{ objectFit: "cover" }}
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          style={{ objectFit: "cover", transition: "transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)" }}
+          className="listing-card-img"
         />
-        <div style={{ position: "absolute", top: "0.75rem", left: "0.75rem", display: "flex", gap: "0.5rem" }}>
-          <span className={`badge badge-${listing.availability}`} style={{ boxShadow: "0 2px 4px rgba(0,0,0,0.2)" }}>
-            {listing.availability.charAt(0).toUpperCase() + listing.availability.slice(1)}
+        {/* Gradient overlay */}
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%)", pointerEvents: "none" }} />
+
+        {/* Top badges */}
+        <div style={{ position: "absolute", top: "0.875rem", left: "0.875rem", display: "flex", gap: "0.5rem", zIndex: 2 }}>
+          <span className={`badge badge-${listing.availability}`}>
+            {listing.availability === "available" ? "● " : ""}{listing.availability.charAt(0).toUpperCase() + listing.availability.slice(1)}
           </span>
-          <span className="badge" style={{ background: "rgba(0,0,0,0.5)", color: "white", backdropFilter: "blur(4px)" }}>
+          <span className="badge" style={{ background: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.85)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.12)" }}>
             {roomTypeLabels[listing.roomType]}
           </span>
         </div>
+
+        {/* Save button */}
         {onToggleSave && (
           <button
             onClick={(e) => { e.preventDefault(); onToggleSave(listing.id); }}
             style={{
               position: "absolute",
-              top: "0.75rem",
-              right: "0.75rem",
-              background: "rgba(255, 255, 255, 0.9)",
-              border: "none",
+              top: "0.875rem",
+              right: "0.875rem",
+              background: "rgba(0,0,0,0.55)",
+              backdropFilter: "blur(8px)",
+              border: "1px solid rgba(255,255,255,0.12)",
               borderRadius: "50%",
-              width: "32px",
-              height: "32px",
+              width: "36px",
+              height: "36px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
-              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-              color: isSaved ? "#f87171" : "#94a3b8",
-              fontSize: "1.2rem"
+              transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+              zIndex: 2,
+              fontSize: "1rem",
             }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.2)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)"; }}
           >
             {isSaved ? "❤️" : "🤍"}
           </button>
         )}
+
+        {/* Bottom price overlay */}
+        <div style={{
+          position: "absolute",
+          bottom: "0.875rem",
+          left: "0.875rem",
+          zIndex: 2,
+        }}>
+          <div className="price-tag">
+            {formatPrice(listing.price)}
+          </div>
+        </div>
       </div>
 
-      {/* Info Section */}
-      <div style={{ padding: "1.25rem", flex: 1, display: "flex", flexDirection: "column" }}>
-        <div style={{ marginBottom: "1rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
-            <h3 style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text)", lineHeight: 1.3, marginBottom: "0.25rem" }}>
-              {listing.title}
-            </h3>
-            <span style={{ fontSize: "1.125rem", fontWeight: 800, color: "var(--primary)", whiteSpace: "nowrap" }}>
-              {formatPrice(listing.price)}
-            </span>
-          </div>
-          <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "0.25rem" }}>
-            📍 {listing.location}
-          </p>
-          <p style={{ fontSize: "0.8rem", color: "var(--text-subtle)", marginTop: "0.5rem" }}>
-            🚶 {listing.distanceFromCampus} min walk from campus
+      {/* ── Info Section ── */}
+      <div style={{ padding: "1.25rem", flex: 1, display: "flex", flexDirection: "column", gap: "0.875rem" }}>
+        {/* Title & Location */}
+        <div>
+          <h3 style={{
+            fontSize: "1.0625rem",
+            fontWeight: 700,
+            color: "var(--text)",
+            lineHeight: 1.3,
+            marginBottom: "0.375rem",
+            letterSpacing: "-0.02em",
+          }}>
+            {listing.title}
+          </h3>
+          <p style={{
+            fontSize: "0.8125rem",
+            color: "var(--text-muted)",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.375rem",
+          }}>
+            <span style={{ color: "var(--primary)" }}>📍</span> {listing.location}
           </p>
         </div>
 
-        {/* Contact Actions */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginTop: "auto" }}>
+        {/* Meta chips */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+          <span className="chip">
+            🚶 {listing.distanceFromCampus} min
+          </span>
+          {listing.roomNumber && (
+            <span className="chip">🚪 {listing.roomNumber}</span>
+          )}
+          {listing.floor && (
+            <span className="chip">🏢 {listing.floor}</span>
+          )}
+        </div>
+
+        {/* Divider */}
+        <div className="divider" />
+
+        {/* Contact buttons */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.625rem" }}>
           <a
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={(e) => handleContact(e, "whatsapp")}
-            className="btn btn-primary btn-sm"
-            style={{ 
-              background: "#25D366", 
-              borderColor: "#25D366", 
-              color: "white",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.5rem",
-              fontSize: "0.8rem"
-            }}
+            onClick={handleContact}
+            className="btn btn-sm btn-whatsapp"
           >
-            <span>💬</span> WhatsApp
+            <span style={{ fontSize: "0.9rem" }}>💬</span> WhatsApp
           </a>
           <a
             href={`tel:${listing.landlord.phone}`}
-            onClick={(e) => handleContact(e, "phone")}
-            className="btn btn-outline btn-sm"
-            style={{ 
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.5rem",
-              fontSize: "0.8rem"
-            }}
+            onClick={handleContact}
+            className="btn btn-sm btn-outline"
           >
-            <span>📞</span> Call Now
+            <span style={{ fontSize: "0.9rem" }}>📞</span> Call Now
           </a>
         </div>
-        
-        <Link 
-          href={`/listing/${listing.id}`} 
-          style={{ 
-            marginTop: "1rem", 
-            textAlign: "center", 
-            fontSize: "0.8rem", 
-            fontWeight: 600, 
+
+        {/* View details link */}
+        <Link
+          href={`/listing/${listing.id}`}
+          onClick={handleViewDetails}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "0.375rem",
+            fontSize: "0.8125rem",
+            fontWeight: 600,
             color: "var(--text-muted)",
-            textDecoration: "none"
+            textDecoration: "none",
+            padding: "0.5rem",
+            borderRadius: "var(--radius-sm)",
+            transition: "var(--transition)",
+            background: "transparent",
+            border: "1px solid transparent",
           }}
-          className="hover-underline"
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLAnchorElement).style.color = "var(--primary-light)";
+            (e.currentTarget as HTMLAnchorElement).style.background = "rgba(59,130,246,0.05)";
+            (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(59,130,246,0.2)";
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLAnchorElement).style.color = "var(--text-muted)";
+            (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
+            (e.currentTarget as HTMLAnchorElement).style.borderColor = "transparent";
+          }}
         >
-          View Full Details →
+          View Full Details
+          <span style={{ transition: "transform 0.2s ease" }}>→</span>
         </Link>
       </div>
+
+      <style>{`
+        .listing-card-img { transform-origin: center; }
+        .card-lift:hover .listing-card-img { transform: scale(1.06); }
+      `}</style>
     </div>
   );
 }

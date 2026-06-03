@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import { AuthProvider } from "@/context/AuthContext";
 import { AuthGuard } from "@/components/AuthGuard";
+import Footer from "@/components/Footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,30 +29,15 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable}`}
+      data-scroll-behavior="smooth"
     >
       <body style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <AuthProvider>
+          <Navbar />
           <AuthGuard>
-            <Navbar />
-            <main style={{ flex: 1 }}>{children}</main>
-            <footer
-              style={{
-                borderTop: "1px solid var(--border)",
-                padding: "2rem 1.5rem",
-                textAlign: "center",
-                color: "var(--text-muted)",
-                fontSize: "0.875rem",
-              }}
-            >
-              <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
-                <p>
-                  © {new Date().getFullYear()}{" "}
-                  <span style={{ color: "var(--primary)", fontWeight: 600 }}>BambiHomes</span>{" "}
-                  — Trusted student housing in Bambili, Cameroon.
-                </p>
-              </div>
-            </footer>
+            <main style={{ flex: 1, paddingTop: "64px" }}>{children}</main>
           </AuthGuard>
+          <Footer />
         </AuthProvider>
       </body>
     </html>

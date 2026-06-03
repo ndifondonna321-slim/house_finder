@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { getAllLandlords, updateLandlordStatus, type Profile } from "@/lib/data";
+import { useAuth } from "@/context/AuthContext";
+import { type Profile } from "@/lib/data";
+import { getAdminDataAction, updateLandlordStatusAction } from "../actions";
 
 export default function AdminLandlordsPage() {
   const [landlords, setLandlords] = useState<Profile[]>([]);
@@ -10,24 +12,44 @@ export default function AdminLandlordsPage() {
 
   const fetchLandlords = async () => {
     setIsLoading(true);
-    const data = await getAllLandlords();
-    setLandlords(data);
-    setIsLoading(false);
+    try {
+      const result = await getAdminDataAction();
+      if (result.success) {
+        setLandlords(result.landlords || []);
+      } else {
+        console.error("Fetch landlords error:", result.error);
+      }
+    } catch (error) {
+      console.error("Fetch landlords unexpected error:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchLandlords();
   }, []);
 
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
   const handleStatusUpdate = async (id: string, status: "approved" | "rejected" | "pending") => {
-    const success = await updateLandlordStatus(id, status);
-    if (success) {
+    setUpdatingId(id);
+    const result = await updateLandlordStatusAction(id, status);
+    
+    if (result.success) {
+      alert("Status updated successfully!");
       fetchLandlords();
+    } else {
+      alert(`Error: ${result.error || "Failed to update status."}\n\nPlease check your .env.local for SUPABASE_SERVICE_ROLE_KEY.`);
     }
+    setUpdatingId(null);
   };
+
+  const { user } = useAuth();
 
   return (
     <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "2rem 1.5rem" }}>
+
       <div style={{ marginBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h1 style={{ fontSize: "1.75rem", fontWeight: 800, marginBottom: "0.25rem" }}>
@@ -70,7 +92,10 @@ export default function AdminLandlordsPage() {
                 <tr key={landlord.id} style={{ borderTop: i > 0 ? "1px solid var(--border)" : "none" }}>
                   <td style={{ padding: "1rem 1.5rem" }}>
                     <div style={{ fontWeight: 600, fontSize: "0.9375rem" }}>{landlord.name}</div>
-                    <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>ID: {landlord.id.slice(0, 8)}...</div>
+                    <div style={{ fontSize: "0.8rem", color: "var(--accent)", fontWeight: 500, marginTop: "0.25rem" }}>
+                      📞 {landlord.phone || "No phone provided"}
+                    </div>
+                    <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "0.125rem" }}>ID: {landlord.id.slice(0, 8)}...</div>
                   </td>
                   <td style={{ padding: "1rem 1.5rem" }}>
                     <span className={`badge badge-${landlord.status === "approved" ? "available" : landlord.status === "pending" ? "reserved" : "occupied"}`}>
@@ -82,19 +107,42 @@ export default function AdminLandlordsPage() {
                   </td>
                   <td style={{ padding: "1rem 1.5rem", textAlign: "right" }}>
                     <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+                      {landlord.phone && (
+                        <a 
+                          href={`https://wa.me/${landlord.phone.replace(/\D/g, '')}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="btn btn-outline btn-sm"
+                          style={{ borderColor: "#25D366", color: "#25D366" }}
+                        >
+                          💬 Chat
+                        </a>
+                      )}
                       {landlord.status !== "approved" && (
-                        <button onClick={() => handleStatusUpdate(landlord.id, "approved")} className="btn btn-primary btn-sm">
-                          Approve
+                        <button 
+                          onClick={() => handleStatusUpdate(landlord.id, "approved")} 
+                          className="btn btn-primary btn-sm"
+                          disabled={updatingId === landlord.id}
+                        >
+                          {updatingId === landlord.id ? "..." : "Approve"}
                         </button>
                       )}
                       {landlord.status !== "rejected" && (
-                        <button onClick={() => handleStatusUpdate(landlord.id, "rejected")} className="btn btn-danger btn-sm">
-                          Reject
+                        <button 
+                          onClick={() => handleStatusUpdate(landlord.id, "rejected")} 
+                          className="btn btn-danger btn-sm"
+                          disabled={updatingId === landlord.id}
+                        >
+                          {updatingId === landlord.id ? "..." : "Reject"}
                         </button>
                       )}
                       {landlord.status !== "pending" && (
-                        <button onClick={() => handleStatusUpdate(landlord.id, "pending")} className="btn btn-ghost btn-sm">
-                          Reset to Pending
+                        <button 
+                          onClick={() => handleStatusUpdate(landlord.id, "pending")} 
+                          className="btn btn-ghost btn-sm"
+                          disabled={updatingId === landlord.id}
+                        >
+                          {updatingId === landlord.id ? "..." : "Reset"}
                         </button>
                       )}
                     </div>

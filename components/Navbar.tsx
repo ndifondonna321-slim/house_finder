@@ -2,277 +2,319 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 
 const navLinks = [
-  { href: "/listings", label: "Browse Houses", roles: ["student", "admin"] },
-  { href: "/saved", label: "Saved", roles: ["student", "admin"] },
-  { href: "/profile", label: "Profile", roles: ["student", "landlord", "admin"] },
-  { href: "/landlord", label: "My Listings", roles: ["landlord"] },
+  { href: "/",         label: "Home",          icon: "🏠", roles: ["student", "landlord", "admin"] },
+  { href: "/listings", label: "Browse Houses", icon: "🔍", roles: ["student", "landlord", "admin"] },
+  { href: "/saved",    label: "Saved",         icon: "❤️", roles: ["student", "admin"] },
+  { href: "/profile",  label: "Profile",       icon: "👤", roles: ["student", "landlord", "admin"] },
+  { href: "/landlord", label: "My Listings",   icon: "📋", roles: ["landlord"] },
 ];
 
 export default function Navbar() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
 
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 16);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Close mobile menu on nav
+  useEffect(() => { setMenuOpen(false); }, [pathname]);
+
+  const visibleLinks = isAuthenticated && user
+    ? navLinks.filter(l => !l.roles || l.roles.includes(user.role || ""))
+    : [];
+
+  const isHome = pathname === "/";
+  // On the home page, start fully transparent so the hero image shows through the navbar
+  const navBg = scrolled
+    ? "rgba(11, 15, 25, 0.95)"
+    : isHome
+    ? "transparent"
+    : "rgba(11, 15, 25, 0.8)";
+  const navBorder = scrolled
+    ? "1px solid rgba(255, 255, 255, 0.08)"
+    : "1px solid transparent";
+
   return (
-    <header
-      style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 50,
-        background: "rgba(8, 14, 26, 0.85)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        borderBottom: "1px solid var(--border)",
-      }}
-    >
-      <nav
+    <>
+      <header
         style={{
-          maxWidth: "1280px",
-          margin: "0 auto",
-          padding: "0 1.5rem",
-          height: "64px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "2rem",
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 100,
+          background: navBg,
+          backdropFilter: scrolled || !isHome ? "blur(24px) saturate(180%)" : "none",
+          WebkitBackdropFilter: scrolled || !isHome ? "blur(24px) saturate(180%)" : "none",
+          borderBottom: navBorder,
+          transition: "background 0.4s ease, border-color 0.3s ease, box-shadow 0.3s ease, backdrop-filter 0.4s ease",
+          boxShadow: scrolled ? "0 4px 6px -1px rgba(15,23,42,0.2)" : "none",
         }}
       >
-        {/* Logo */}
-        <Link
-          href="/"
+        <nav
           style={{
+            maxWidth: "1280px",
+            margin: "0 auto",
+            padding: "0 1.5rem",
+            height: "64px",
             display: "flex",
             alignItems: "center",
-            gap: "0.5rem",
-            textDecoration: "none",
-            flexShrink: 0,
+            justifyContent: "space-between",
+            gap: "1.5rem",
           }}
         >
-          <span
-            style={{
-              width: "34px",
-              height: "34px",
-              background: "linear-gradient(135deg, var(--primary), var(--primary-dark))",
-              borderRadius: "8px",
+          {/* ── Logo ── */}
+          <Link href="/" style={{ display: "flex", alignItems: "center", gap: "0.625rem", textDecoration: "none", flexShrink: 0 }}>
+            <div style={{
+              width: "36px",
+              height: "36px",
+              background: "linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)",
+              borderRadius: "10px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontSize: "18px",
+              boxShadow: "0 4px 12px rgba(37,99,235,0.2)",
               flexShrink: 0,
+              transition: "transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
             }}
-          >
-            🏠
-          </span>
-          <span
-            style={{
-              fontSize: "1.125rem",
-              fontWeight: 700,
-              color: "var(--text)",
-              letterSpacing: "-0.02em",
-            }}
-          >
-            Bambi<span style={{ color: "var(--primary)" }}>Homes</span>
-          </span>
-        </Link>
-
-        {/* Desktop nav links */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            flex: 1,
-            justifyContent: "center",
-          }}
-          className="hidden-mobile"
-        >
-          {isAuthenticated && user && navLinks
-            .filter((link) => !link.roles || link.roles.includes(user?.role || ""))
-            .map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              style={{
-                padding: "0.5rem 1rem",
-                borderRadius: "0.5rem",
-                fontSize: "0.9rem",
-                fontWeight: 500,
-                textDecoration: "none",
-                transition: "all 0.2s ease",
-                color: isActive(link.href) ? "var(--primary)" : "var(--text-subtle)",
-                background: isActive(link.href)
-                  ? "rgba(20, 184, 166, 0.1)"
-                  : "transparent",
-                border: isActive(link.href)
-                  ? "1px solid rgba(20,184,166,0.2)"
-                  : "1px solid transparent",
-              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = "scale(1.1) rotate(-5deg)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = "scale(1) rotate(0deg)"; }}
             >
-              {link.label}
-            </Link>
-          ))}
-          {user?.role === "admin" && (
-            <Link
-              href="/admin"
-              style={{
-                padding: "0.5rem 1rem",
-                borderRadius: "0.5rem",
-                fontSize: "0.9rem",
-                fontWeight: 500,
-                textDecoration: "none",
-                transition: "all 0.2s ease",
-                color: isActive("/admin") ? "var(--accent)" : "var(--text-muted)",
-                background: isActive("/admin")
-                  ? "rgba(245, 158, 11, 0.1)"
-                  : "transparent",
-                border: isActive("/admin")
-                  ? "1px solid rgba(245,158,11,0.2)"
-                  : "1px solid transparent",
-              }}
-            >
-              ⚙ Admin Panel
-            </Link>
-          )}
-        </div>
-
-        {/* User Menu / CTA */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexShrink: 0 }}>
-          {isAuthenticated && user ? (
-            <>
-              <span
-                className="hidden-mobile"
-                style={{
-                  fontSize: "0.875rem",
-                  color: "var(--text-subtle)",
-                  paddingRight: "0.5rem",
-                  borderRight: "1px solid var(--border-light)",
-                }}
-              >
-                Hi, {user.name.split(" ")[0]}
-              </span>
-              <button
-                onClick={logout}
-                className="hidden-mobile"
-                style={{
-                  padding: "0.5rem 1rem",
-                  borderRadius: "0.5rem",
-                  fontSize: "0.875rem",
-                  fontWeight: 500,
-                  background: "transparent",
-                  border: "1px solid var(--border)",
-                  color: "var(--text-subtle)",
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
-                }}
-                onMouseEnter={(e) => {
-                  (e.target as HTMLButtonElement).style.borderColor = "var(--text-muted)";
-                  (e.target as HTMLButtonElement).style.color = "var(--text)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.target as HTMLButtonElement).style.borderColor = "var(--border)";
-                  (e.target as HTMLButtonElement).style.color = "var(--text-subtle)";
-                }}
-              >
-                Logout
-              </button>
-            </>
-          ) : (
-            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-              <Link
-                href="/"
-                className="hidden-mobile"
-                style={{
-                  padding: "0.5rem 1rem",
-                  borderRadius: "0.5rem",
-                  fontSize: "0.875rem",
-                  fontWeight: 500,
-                  textDecoration: "none",
-                  background: "transparent",
-                  border: "1px solid var(--border)",
-                  color: "var(--text-subtle)",
-                  transition: "all 0.2s ease",
-                  cursor: "pointer",
-                }}
-              >
-                Home
-              </Link>
-              <Link
-                href="/login"
-                className="btn btn-primary hidden-mobile"
-                style={{
-                  padding: "0.5rem 1.25rem",
-                  fontSize: "0.875rem",
-                  fontWeight: 600,
-                }}
-              >
-                Login / Register
-              </Link>
+              🏠
             </div>
-          )}
-        </div>
+            <span style={{ fontSize: "1.125rem", fontWeight: 800, color: "var(--text)", letterSpacing: "-0.03em" }}>
+              Bambi<span style={{ color: "var(--primary)" }}>Homes</span>
+            </span>
+          </Link>
 
-        {/* Mobile hamburger */}
-        <button
-          onClick={() => setMenuOpen(!menuOpen)}
-          className="show-mobile"
-          style={{
-            background: "none",
-            border: "1px solid var(--border-light)",
-            borderRadius: "0.5rem",
-            color: "var(--text)",
-            padding: "0.5rem",
-            cursor: "pointer",
-            display: "none",
-            fontSize: "1.25rem",
-            lineHeight: 1,
-          }}
-          aria-label="Toggle menu"
-        >
-          {menuOpen ? "✕" : "☰"}
-        </button>
-      </nav>
+          {/* ── Desktop Nav Links ── */}
+          <div
+            style={{ display: "flex", alignItems: "center", gap: "0.25rem", flex: 1, justifyContent: "center" }}
+            className="hidden-mobile"
+          >
+            {visibleLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.375rem",
+                  padding: "0.5rem 0.875rem",
+                  borderRadius: "var(--radius-sm)",
+                  fontSize: "0.875rem",
+                  fontWeight: isActive(link.href) ? 600 : 500,
+                  textDecoration: "none",
+                  transition: "all 0.2s ease",
+                  color: isActive(link.href) ? "var(--primary-light)" : "var(--text-subtle)",
+                  background: isActive(link.href) ? "rgba(59, 130, 246, 0.1)" : "transparent",
+                  border: isActive(link.href) ? "1px solid rgba(59,130,246,0.2)" : "1px solid transparent",
+                  position: "relative",
+                }}
+              >
+                <span style={{ fontSize: "0.85rem" }}>{link.icon}</span>
+                {link.label}
+              </Link>
+            ))}
+            {user?.role === "admin" && (
+              <Link
+                href="/admin"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.375rem",
+                  padding: "0.5rem 0.875rem",
+                  borderRadius: "var(--radius-sm)",
+                  fontSize: "0.875rem",
+                  fontWeight: isActive("/admin") ? 600 : 500,
+                  textDecoration: "none",
+                  transition: "all 0.2s ease",
+                  color: isActive("/admin") ? "var(--accent)" : "var(--text-muted)",
+                  background: isActive("/admin") ? "rgba(245, 158, 11, 0.1)" : "transparent",
+                  border: isActive("/admin") ? "1px solid rgba(245,158,11,0.2)" : "1px solid transparent",
+                }}
+              >
+                <span style={{ fontSize: "0.85rem" }}>⚙️</span> Admin
+              </Link>
+            )}
+          </div>
 
-      {/* Mobile menu */}
-      {menuOpen && (
+          {/* ── User Section ── */}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexShrink: 0 }} className="hidden-mobile">
+            {isAuthenticated && user ? (
+              <>
+                {/* User pill */}
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.625rem",
+                  padding: "0.375rem 0.875rem 0.375rem 0.375rem",
+                  background: "rgba(255, 255, 255, 0.04)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "9999px",
+                }}>
+                  {user.avatarUrl ? (
+                    <img
+                      src={user.avatarUrl}
+                      alt={user.name}
+                      style={{
+                        width: "28px",
+                        height: "28px",
+                        borderRadius: "50%",
+                        objectFit: "cover",
+                        flexShrink: 0,
+                      }}
+                    />
+                  ) : (
+                    <div style={{
+                      width: "28px",
+                      height: "28px",
+                      background: "linear-gradient(135deg, var(--primary-dark), var(--primary))",
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "0.75rem",
+                      fontWeight: 800,
+                      color: "#fff",
+                      flexShrink: 0,
+                    }}>
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-subtle)" }}>
+                    {user.name.split(" ")[0]}
+                  </span>
+                </div>
+                <button
+                  onClick={logout}
+                  style={{
+                    padding: "0.45rem 1rem",
+                    borderRadius: "var(--radius-sm)",
+                    fontSize: "0.8125rem",
+                    fontWeight: 500,
+                    background: "transparent",
+                    border: "1px solid var(--border)",
+                    color: "var(--text-muted)",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(239,68,68,0.4)";
+                    (e.currentTarget as HTMLButtonElement).style.color = "#dc2626";
+                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(239,68,68,0.06)";
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)";
+                    (e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)";
+                    (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                  }}
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                <Link
+                  href="/login"
+                  style={{
+                    padding: "0.45rem 1rem",
+                    borderRadius: "var(--radius-sm)",
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
+                    textDecoration: "none",
+                    background: "transparent",
+                    border: "1px solid var(--border-light)",
+                    color: "var(--text-subtle)",
+                    transition: "all 0.2s ease",
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLAnchorElement).style.color = "var(--text)";
+                    (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border-light)";
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLAnchorElement).style.color = "var(--text-subtle)";
+                    (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border-light)";
+                  }}
+                >
+                  Sign in
+                </Link>
+                <Link href="/signup" className="btn btn-primary btn-sm">
+                  Register →
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* ── Mobile Hamburger ── */}
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="show-mobile"
+            style={{
+              background: menuOpen ? "rgba(59,130,246,0.1)" : "rgba(255, 255, 255, 0.04)",
+              border: `1px solid ${menuOpen ? "rgba(59,130,246,0.3)" : "var(--border)"}`,
+              borderRadius: "var(--radius-sm)",
+              color: menuOpen ? "var(--primary)" : "var(--text-subtle)",
+              padding: "0.5rem 0.625rem",
+              cursor: "pointer",
+              display: "none",
+              fontSize: "1.1rem",
+              lineHeight: 1,
+              transition: "all 0.2s ease",
+            }}
+            aria-label="Toggle menu"
+          >
+            {menuOpen ? "✕" : "☰"}
+          </button>
+        </nav>
+
+        {/* ── Mobile Menu ── */}
         <div
           style={{
-            background: "var(--bg-card)",
-            borderTop: "1px solid var(--border)",
-            padding: "1rem 1.5rem",
-            display: "flex",
+            display: menuOpen ? "flex" : "none",
             flexDirection: "column",
-            gap: "0.75rem",
+            padding: "0.75rem 1rem 1.25rem",
+            gap: "0.25rem",
+            background: "rgba(11, 15, 25, 0.98)",
+            borderTop: "1px solid var(--border)",
+            boxShadow: "0 10px 15px -3px rgba(0,0,0,0.5)",
+            animation: "fadeInDown 0.2s ease both",
           }}
         >
-          {isAuthenticated && user && navLinks
-            .filter((link) => !link.roles || link.roles.includes(user?.role || ""))
-            .map((link) => (
+          {visibleLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               onClick={() => setMenuOpen(false)}
               style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.75rem",
                 padding: "0.75rem 1rem",
-                borderRadius: "0.5rem",
+                borderRadius: "var(--radius)",
                 fontSize: "0.9375rem",
-                fontWeight: 500,
+                fontWeight: isActive(link.href) ? 600 : 500,
                 textDecoration: "none",
-                color: isActive(link.href) ? "var(--primary)" : "var(--text)",
-                background: isActive(link.href)
-                  ? "rgba(20, 184, 166, 0.1)"
-                  : "transparent",
-                border: isActive(link.href) ? "1px solid rgba(20,184,166,0.2)" : "1px solid transparent",
-                transition: "all 0.2s ease",
+                color: isActive(link.href) ? "var(--primary-light)" : "var(--text)",
+                background: isActive(link.href) ? "rgba(59,130,246,0.1)" : "transparent",
+                border: isActive(link.href) ? "1px solid rgba(59,130,246,0.2)" : "1px solid transparent",
+                transition: "all 0.15s",
               }}
             >
-              {link.label}
+              <span>{link.icon}</span> {link.label}
             </Link>
           ))}
           {user?.role === "admin" && (
@@ -280,90 +322,55 @@ export default function Navbar() {
               href="/admin"
               onClick={() => setMenuOpen(false)}
               style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.75rem",
                 padding: "0.75rem 1rem",
-                borderRadius: "0.5rem",
+                borderRadius: "var(--radius)",
                 fontSize: "0.9375rem",
                 fontWeight: 500,
                 textDecoration: "none",
                 color: isActive("/admin") ? "var(--accent)" : "var(--text-muted)",
                 background: isActive("/admin") ? "rgba(245, 158, 11, 0.1)" : "transparent",
-                border: isActive("/admin") ? "1px solid rgba(245,158,11,0.2)" : "1px solid transparent",
-                transition: "all 0.2s ease",
+                transition: "all 0.15s",
               }}
             >
-              ⚙ Admin Panel
+              <span>⚙️</span> Admin Panel
             </Link>
           )}
-          <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "0.5rem 0" }} />
+
+          <div className="divider" style={{ margin: "0.5rem 0" }} />
+
           {user ? (
             <button
-              onClick={() => {
-                logout();
-                setMenuOpen(false);
-              }}
+              onClick={() => { logout(); setMenuOpen(false); }}
               style={{
-                background: "transparent",
-                border: "1px solid var(--border)",
-                color: "var(--text-subtle)",
+                background: "rgba(239,68,68,0.07)",
+                border: "1px solid rgba(239,68,68,0.2)",
+                color: "#f87171",
                 cursor: "pointer",
                 padding: "0.75rem 1rem",
-                borderRadius: "0.5rem",
+                borderRadius: "var(--radius)",
                 fontSize: "0.9375rem",
                 fontWeight: 500,
-                transition: "all 0.2s ease",
-                width: "100%",
-                textAlign: "center",
+                transition: "all 0.15s",
+                textAlign: "left",
               }}
             >
-              Logout
+              🚪 Sign out
             </button>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              <Link
-                href="/"
-                onClick={() => setMenuOpen(false)}
-                style={{
-                  padding: "0.75rem 1rem",
-                  borderRadius: "0.5rem",
-                  fontSize: "0.9375rem",
-                  fontWeight: 500,
-                  textDecoration: "none",
-                  background: "transparent",
-                  border: "1px solid var(--border)",
-                  color: "var(--text-subtle)",
-                  transition: "all 0.2s ease",
-                  textAlign: "center",
-                }}
-              >
-                Home
+              <Link href="/login" onClick={() => setMenuOpen(false)} className="btn btn-outline" style={{ justifyContent: "center" }}>
+                Sign in
               </Link>
-              <Link
-                href="/login"
-                onClick={() => setMenuOpen(false)}
-                className="btn btn-primary"
-                style={{ 
-                  padding: "0.75rem 1rem", 
-                  fontSize: "0.9375rem",
-                  fontWeight: 600,
-                  textAlign: "center",
-                }}
-              >
-                Login / Register
+              <Link href="/signup" onClick={() => setMenuOpen(false)} className="btn btn-primary" style={{ justifyContent: "center" }}>
+                Create Account →
               </Link>
             </div>
           )}
         </div>
-      )}
-
-      <style>{`
-        @media (max-width: 768px) {
-          .hidden-mobile { display: none !important; }
-          .show-mobile   { display: flex !important; }
-        }
-        @media (min-width: 769px) {
-          .show-mobile { display: none !important; }
-        }
-      `}</style>
-    </header>
+      </header>
+    </>
   );
 }
