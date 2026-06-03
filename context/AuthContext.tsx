@@ -39,11 +39,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Fetch profile data from the profiles table
   const fetchProfile = async (userId: string, email: string) => {
-    const { data, error } = await supabase
+    const { data: initialData, error } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", userId)
       .single();
+
+    let data = initialData;
 
     // If profile is missing, create a default one (self-healing)
     if (error && error.code === "PGRST116") {
