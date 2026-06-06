@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+import NotificationBell from "./NotificationBell";
 
 const navLinks = [
   { href: "/",         label: "Home",          icon: "🏠", roles: ["student", "landlord", "admin"] },
@@ -156,6 +157,7 @@ export default function Navbar() {
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexShrink: 0 }} className="hidden-mobile">
             {isAuthenticated && user ? (
               <>
+                <NotificationBell />
                 {/* User pill */}
                 <div style={{
                   display: "flex",

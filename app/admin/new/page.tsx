@@ -91,6 +91,16 @@ export default function AdminNewListingPage() {
       return;
     }
 
+    // Broadcast a global notification
+    supabase.from("notifications").insert([
+      {
+        message: `New property available: ${form.title} in ${form.location}`,
+        link: "/listings",
+      }
+    ]).then(({ error }) => {
+      if (error) console.error("Failed to broadcast notification:", error);
+    });
+
     setIsSubmitting(false);
     setSuccess(true);
   };
