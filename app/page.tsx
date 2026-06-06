@@ -225,12 +225,13 @@ export default function HomePage() {
 
           {/* Headline */}
           <h1 className="anim-fade-up delay-100" style={{
-            fontSize: "clamp(2.25rem, 8vw, 5.5rem)",
+            fontSize: "clamp(1.75rem, 7vw, 5.5rem)",
             fontWeight: 900,
-            lineHeight: 1.08,
+            lineHeight: 1.1,
             letterSpacing: "-0.04em",
             color: "#f1f5f9",
             marginBottom: "1.5rem",
+            wordBreak: "break-word"
           }}>
             Find your perfect{" "}
             <span style={{
@@ -246,12 +247,13 @@ export default function HomePage() {
 
           {/* Subheading */}
           <p className="anim-fade-up delay-200" style={{
-            fontSize: "clamp(0.9375rem, 2.5vw, 1.1875rem)",
+            fontSize: "clamp(0.85rem, 2.2vw, 1.1875rem)",
             color: "#94a3b8",
-            lineHeight: 1.8,
+            lineHeight: 1.7,
             maxWidth: "52ch",
-            margin: "0 auto 3rem",
+            margin: "0 auto 2.5rem",
             fontWeight: 400,
+            padding: "0 0.5rem"
           }}>
             Verified listings, transparent pricing, and direct landlord contact.
             No agents. No hidden fees. Just housing that works.
@@ -259,11 +261,11 @@ export default function HomePage() {
 
           {/* CTA row */}
           <div className="anim-fade-up delay-300" style={{
-            display: "flex", gap: "1rem", justifyContent: "center",
-            flexWrap: "wrap", marginBottom: "5rem",
+            display: "flex", gap: "0.75rem", justifyContent: "center",
+            flexWrap: "wrap", marginBottom: "4rem",
           }}>
             <CTAButton label="🏠 Browse All Listings" />
-            <Link href="#how-it-works" className="btn btn-outline" style={{ padding: "1rem 2.25rem", fontSize: "1rem", fontWeight: 600 }}>
+            <Link href="#how-it-works" className="btn btn-outline" style={{ padding: "0.875rem 1.5rem", fontSize: "0.9375rem", fontWeight: 600 }}>
               See how it works
             </Link>
           </div>
