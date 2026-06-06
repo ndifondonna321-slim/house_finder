@@ -225,12 +225,12 @@ export default function HomePage() {
 
           {/* Headline */}
           <h1 className="anim-fade-up delay-100" style={{
-            fontSize: "clamp(3rem, 7.5vw, 5.5rem)",
+            fontSize: "clamp(2.25rem, 8vw, 5.5rem)",
             fontWeight: 900,
-            lineHeight: 1.04,
-            letterSpacing: "-0.045em",
+            lineHeight: 1.08,
+            letterSpacing: "-0.04em",
             color: "#f1f5f9",
-            marginBottom: "1.75rem",
+            marginBottom: "1.5rem",
           }}>
             Find your perfect{" "}
             <span style={{
@@ -246,7 +246,7 @@ export default function HomePage() {
 
           {/* Subheading */}
           <p className="anim-fade-up delay-200" style={{
-            fontSize: "clamp(1rem, 2.5vw, 1.1875rem)",
+            fontSize: "clamp(0.9375rem, 2.5vw, 1.1875rem)",
             color: "#94a3b8",
             lineHeight: 1.8,
             maxWidth: "52ch",
