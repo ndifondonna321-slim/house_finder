@@ -59,7 +59,7 @@ export default function NotificationBell({ direction = "down" }: { direction?: "
     fetchNotifications();
 
     // Subscribe to new notifications in real-time
-    const channel = supabase.channel('public:notifications')
+    const channel = supabase.channel(`public:notifications-${Math.random()}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications' },
