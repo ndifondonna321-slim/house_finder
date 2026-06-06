@@ -106,13 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initializeAuth();
 
-    // Safety timeout: Ensure loading screen disappears even if Supabase hangs
-    const timeout = setTimeout(() => {
-      if (mounted && isLoading) {
-        console.warn("Auth initialization timed out. Forcing isLoading to false.");
-        setIsLoading(false);
-      }
-    }, 5000);
+    // Removed stale safety timeout
 
     // Listen for changes on auth state (logged in, signed out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -135,7 +129,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
-      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, []);
