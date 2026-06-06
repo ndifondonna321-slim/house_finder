@@ -12,7 +12,7 @@ type Notification = {
   created_at: string;
 };
 
-export default function NotificationBell() {
+export default function NotificationBell({ direction = "down" }: { direction?: "up" | "down" }) {
   const { user } = useAuth();
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -135,7 +135,8 @@ export default function NotificationBell() {
       {isOpen && (
         <div style={{
           position: "absolute",
-          top: "100%",
+          top: direction === "down" ? "100%" : "auto",
+          bottom: direction === "up" ? "100%" : "auto",
           right: "-10px",
           width: "320px",
           background: "var(--bg-card)",
@@ -144,8 +145,9 @@ export default function NotificationBell() {
           boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
           zIndex: 50,
           overflow: "hidden",
-          marginTop: "0.5rem",
-          animation: "fadeInDown 0.2s ease both"
+          marginTop: direction === "down" ? "0.5rem" : "0",
+          marginBottom: direction === "up" ? "0.5rem" : "0",
+          animation: direction === "down" ? "fadeInDown 0.2s ease both" : "fadeInUp 0.2s ease both"
         }}>
           <div style={{
             padding: "1rem",

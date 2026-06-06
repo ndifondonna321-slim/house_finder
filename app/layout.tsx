@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import { AuthProvider } from "@/context/AuthContext";
 import { AuthGuard } from "@/components/AuthGuard";
 import Footer from "@/components/Footer";
+import MobileBottomNav from "@/components/MobileBottomNav";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,6 +38,7 @@ export default function RootLayout({
           <AuthGuard>
             <main style={{ flex: 1, paddingTop: "64px" }}>{children}</main>
           </AuthGuard>
+          <MobileBottomNav />
           <Footer />
         </AuthProvider>
       </body>
