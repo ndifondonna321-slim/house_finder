@@ -493,8 +493,8 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* Website Review Form - Only visible for registered students */}
-          {user?.role === "student" && (
+          {/* Website Review Form - Visible for registered students and landlords */}
+          {(user?.role === "student" || user?.role === "landlord") && (
             <div
               style={{
                 background: "rgba(255, 255, 255, 0.02)",
