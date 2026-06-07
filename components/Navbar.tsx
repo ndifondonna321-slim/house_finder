@@ -7,7 +7,6 @@ import { useAuth } from "@/context/AuthContext";
 import NotificationBell from "./NotificationBell";
 
 const navLinks = [
-  { href: "/",         label: "Home",          icon: "🏠", roles: ["student", "landlord", "admin"] },
   { href: "/listings", label: "Browse Houses", icon: "🔍", roles: ["student", "landlord", "admin"] },
   { href: "/saved",    label: "Saved",         icon: "❤️", roles: ["student", "admin"] },
   { href: "/profile",  label: "Profile",       icon: "👤", roles: ["student", "landlord", "admin"] },
@@ -97,7 +96,7 @@ export default function Navbar() {
               🏠
             </div>
             <span style={{ fontSize: "1.125rem", fontWeight: 800, color: "var(--text)", letterSpacing: "-0.03em" }}>
-              Bambi<span style={{ color: "var(--primary)" }}>Homes</span>
+              Home
             </span>
           </Link>
 
