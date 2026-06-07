@@ -95,6 +95,9 @@ export default function Navbar() {
             >
               🏠
             </div>
+            <span style={{ fontSize: "1.125rem", fontWeight: 800, color: "var(--text)", letterSpacing: "-0.03em" }}>
+              Homes
+            </span>
           </Link>
 
           {/* ── Desktop Nav Links ── */}
