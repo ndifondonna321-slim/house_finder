@@ -75,29 +75,14 @@ export default function Navbar() {
             gap: "1.5rem",
           }}
         >
-          {/* ── Logo ── */}
-          <Link href="/" style={{ display: "flex", alignItems: "center", gap: "0.625rem", textDecoration: "none", flexShrink: 0 }}>
-            <div style={{
-              width: "36px",
-              height: "36px",
-              background: "linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)",
-              borderRadius: "10px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "18px",
-              boxShadow: "0 4px 12px rgba(37,99,235,0.2)",
-              flexShrink: 0,
-              transition: "transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
-            }}
-              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = "scale(1.1) rotate(-5deg)"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = "scale(1) rotate(0deg)"; }}
-            >
-              🏠
-            </div>
-            <span style={{ fontSize: "1.125rem", fontWeight: 800, color: "var(--text)", letterSpacing: "-0.03em" }}>
-              Homes
-            </span>
+          {/* ── Home Button (Replaced Logo) ── */}
+          <Link 
+            href="/" 
+            className={`nav-link ${isActive("/") ? "active" : ""}`}
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+          >
+            <span style={{ fontSize: "1rem" }}>🏠</span> 
+            <span style={{ fontWeight: 600 }}>Home</span>
           </Link>
 
           {/* ── Desktop Nav Links ── */}
