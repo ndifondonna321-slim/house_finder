@@ -208,21 +208,6 @@ export default function HomePage() {
 
         <div style={{ position: "relative", zIndex: 1, maxWidth: "860px" }}>
 
-          {/* Eyebrow pill */}
-          <div className="anim-fade-up" style={{
-            display: "inline-flex", alignItems: "center", gap: "0.625rem",
-            padding: "0.45rem 1.125rem 0.45rem 0.75rem",
-            background: "rgba(59,130,246,0.1)",
-            border: "1px solid rgba(59,130,246,0.22)",
-            borderRadius: "9999px",
-            marginBottom: "2.25rem",
-          }}>
-            <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: "#3b82f6", animation: "pulse-dot 2s ease-in-out infinite", flexShrink: 0 }} />
-            <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "#93c5fd", letterSpacing: "0.02em" }}>
-              Built exclusively for UBa students in Bambili
-            </span>
-          </div>
-
           {/* Headline */}
           <h1 className="anim-fade-up delay-100" style={{
             fontSize: "clamp(1.75rem, 7vw, 5.5rem)",
